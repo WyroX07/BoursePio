@@ -1,0 +1,754 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0b0f14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BoursePio">
+<title>BoursePio</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+:root{
+  --bg:#0b0f14; --panel:#131a22; --panel2:#1a232e; --line:#253141;
+  --text:#e8eef5; --muted:#8b9bb0; --up:#22c55e; --down:#ef4444; --gold:#f5c542; --accent:#38bdf8;
+  --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
+body{min-height:100vh;padding-bottom:calc(64px + var(--safe-b))}
+button{font:inherit;color:inherit;border:0;background:var(--panel2);border-radius:12px;padding:12px 14px;cursor:pointer}
+button:active{transform:scale(.97)}
+button.primary{background:var(--accent);color:#04121c;font-weight:700}
+button.up{background:var(--up);color:#04140a;font-weight:700}
+button.down{background:var(--down);color:#1a0505;font-weight:700}
+button.ghost{background:transparent;border:1px solid var(--line)}
+button.small{padding:8px 10px;font-size:13px;border-radius:10px}
+input,select{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;width:100%}
+.up-t{color:var(--up)} .down-t{color:var(--down)} .muted{color:var(--muted)} .gold{color:var(--gold)}
+.mono{font-variant-numeric:tabular-nums}
+header{position:sticky;top:0;z-index:10;background:rgba(11,15,20,.92);backdrop-filter:blur(8px);padding:calc(8px + var(--safe-t)) 16px 8px;border-bottom:1px solid var(--line)}
+.hrow{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.brand{font-weight:800;letter-spacing:.5px}
+.brand span{color:var(--gold)}
+.clock{font-size:13px;text-align:right}
+.phase{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--panel2);text-transform:uppercase;letter-spacing:.5px}
+.phase.hot{background:#7c2d12;color:#fed7aa;animation:pulse 1.2s infinite}
+@keyframes pulse{50%{opacity:.6}}
+.progress{height:3px;background:var(--panel2);border-radius:3px;margin-top:6px;overflow:hidden}
+.progress>div{height:100%;background:linear-gradient(90deg,var(--accent),var(--gold),var(--down))}
+.ticker{overflow:hidden;white-space:nowrap;font-size:12px;margin-top:6px;mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+.ticker>div{display:inline-block;animation:scroll 40s linear infinite;padding-left:100%}
+.ticker b{margin-left:14px}
+@keyframes scroll{to{transform:translateX(-100%)}}
+main{padding:12px 16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:10px}
+.stock{display:grid;grid-template-columns:40px 1fr 90px 76px;align-items:center;gap:8px}
+.emoji{font-size:26px;text-align:center}
+.sname{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stk{font-size:12px;color:var(--muted)}
+.price{text-align:right;font-weight:700}
+.pct{text-align:right;font-size:12px;font-weight:700}
+.badge{display:inline-block;padding:3px 7px;border-radius:8px;font-size:12px;font-weight:700}
+.badge.up{background:rgba(34,197,94,.15);color:var(--up)} .badge.down{background:rgba(239,68,68,.15);color:var(--down)}
+canvas{display:block;width:100%}
+.flash-up{animation:fu .8s} .flash-down{animation:fd .8s}
+@keyframes fu{0%{background:rgba(34,197,94,.35)}} @keyframes fd{0%{background:rgba(239,68,68,.35)}}
+h2{font-size:18px;margin:6px 0 10px} h3{font-size:15px;margin:14px 0 8px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.row{display:flex;gap:8px;align-items:center} .row>*{flex:1}
+.between{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.player{display:flex;align-items:center;gap:12px}
+.avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:18px;flex:none}
+.rank{font-size:22px;width:34px;text-align:center;flex:none}
+.big{font-size:28px;font-weight:800}
+.log-item{padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.log-item:last-child{border:0}
+.log-t{font-size:11px;color:var(--muted)}
+nav{position:fixed;bottom:0;left:0;right:0;z-index:20;display:grid;grid-template-columns:repeat(5,1fr);background:rgba(19,26,34,.97);border-top:1px solid var(--line);padding-bottom:var(--safe-b)}
+nav button{background:none;border-radius:0;padding:8px 0 10px;font-size:11px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button i{font-style:normal;font-size:20px}
+nav button.on{color:var(--text)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:8px 10px;border-radius:99px;background:var(--panel2);border:1px solid var(--line);font-size:13px}
+.chip.on{border-color:var(--accent);background:rgba(56,189,248,.15)}
+.sheet-bg{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;animation:fade .15s}
+.sheet{width:100%;max-height:92vh;overflow:auto;background:var(--panel);border-radius:20px 20px 0 0;padding:16px 16px calc(20px + var(--safe-b));border-top:1px solid var(--line);animation:slide .2s}
+@keyframes fade{from{opacity:0}} @keyframes slide{from{transform:translateY(40px)}}
+.event-bg{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:20px;background:rgba(0,0,0,.75);animation:fade .2s}
+.event{width:100%;max-width:420px;border-radius:22px;padding:24px 20px;text-align:center;border:2px solid var(--line);background:var(--panel);animation:pop .35s cubic-bezier(.2,1.6,.4,1)}
+.event.good{border-color:var(--up);box-shadow:0 0 60px rgba(34,197,94,.35)}
+.event.bad{border-color:var(--down);box-shadow:0 0 60px rgba(239,68,68,.35)}
+.event.neutral{border-color:var(--gold);box-shadow:0 0 60px rgba(245,197,66,.3)}
+.event .ico{font-size:64px;line-height:1.1}
+.event .ttl{font-size:22px;font-weight:800;margin:8px 0}
+.event .txt{color:#c9d5e3;margin-bottom:18px;white-space:pre-line}
+.event .kick{font-size:11px;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
+@keyframes pop{from{transform:scale(.6);opacity:0}}
+.toast{position:fixed;left:16px;right:16px;bottom:calc(76px + var(--safe-b));z-index:70;background:#e8eef5;color:#0b0f14;border-radius:14px;padding:14px;font-weight:700;display:flex;justify-content:space-between;align-items:center;gap:10px;box-shadow:0 10px 30px rgba(0,0,0,.5);animation:slide .2s}
+.toast button{background:#0b0f14;color:#fff;padding:8px 12px}
+.empty{text-align:center;color:var(--muted);padding:30px 10px}
+.seg{display:flex;background:var(--panel2);border-radius:10px;padding:3px;gap:3px}
+.seg button{flex:1;padding:7px;font-size:12px;background:none;border-radius:8px}
+.seg button.on{background:var(--line)}
+.hint{font-size:12px;color:var(--muted);margin-top:6px}
+.inst{background:linear-gradient(135deg,#1e3a5f,#2a1e5f);border-radius:14px;padding:14px;margin-bottom:10px;font-size:14px}
+.final-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)}
+</style>
+</head>
+<body>
+<header id="hdr"></header>
+<main id="main"></main>
+<nav id="nav"></nav>
+<div id="layer"></div>
+
+<script>
+'use strict';
+/* ============================================================
+   BoursePio — bourse de soirée, 100 % locale (localStorage)
+   ============================================================ */
+const KEY = 'boursepio.v1';
+const TICK_SEC = 4;
+const MAX_HIST = 2000;
+
+const STOCKS = [
+  {id:'PIO',  name:'Pio Banque',      emoji:'🏦', color:'#38bdf8', base:50,  vol:.006, drift:.0006, sector:'safe'},
+  {id:'GOLD', name:'Lingot d\'Or',    emoji:'🥇', color:'#f5c542', base:80,  vol:.005, drift:.0001, sector:'safe'},
+  {id:'PIZ',  name:'Pizza Holding',   emoji:'🍕', color:'#fb923c', base:30,  vol:.011, drift:.0003, sector:'food'},
+  {id:'BIR',  name:'Brasserie Mousse',emoji:'🍺', color:'#facc15', base:20,  vol:.014, drift:.0003, sector:'food'},
+  {id:'KBB',  name:'Kebab Corp',      emoji:'🥙', color:'#a3e635', base:15,  vol:.016, drift:.0002, sector:'food'},
+  {id:'FUSE', name:'Fusée Lunaire',   emoji:'🚀', color:'#c084fc', base:10,  vol:.032, drift:.0004, sector:'tech'},
+  {id:'WAF',  name:'WafCoin',         emoji:'🐶', color:'#f472b6', base:4,   vol:.050, drift:0,     sector:'tech'},
+];
+const SECTORS = {safe:'les valeurs refuges', food:'la restauration', tech:'la tech'};
+const AVATAR_COLORS = ['#38bdf8','#f472b6','#a3e635','#fb923c','#c084fc','#facc15','#2dd4bf','#f87171','#818cf8','#4ade80'];
+const FREQ = {calme:[9,16], normal:[5,11], chaos:[3,6]}; // minutes entre événements
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const rnd = (a,b) => a + Math.random()*(b-a);
+const rint = (a,b) => Math.floor(rnd(a,b+1));
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function gauss(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)}
+function weighted(list){const t=list.reduce((s,x)=>s+x.w,0);let r=Math.random()*t;for(const x of list){if((r-=x.w)<=0)return x}return list[0]}
+const fmtP = p => p < 10 ? p.toFixed(2) : p < 100 ? p.toFixed(1) : Math.round(p).toString();
+const fmtPct = x => (x>=0?'+':'') + (x*100).toFixed(1) + ' %';
+const fmtT = n => Math.floor(n).toLocaleString('fr-FR');
+const fmtSigned = n => { n=Math.round(n); return (n>=0?'+':'') + n.toLocaleString('fr-FR') };
+const cls = x => x >= 0 ? 'up' : 'down';
+function fmtDur(ms){ms=Math.max(0,ms);const m=Math.floor(ms/60000),h=Math.floor(m/60);return h?`${h}h${String(m%60).padStart(2,'0')}`:`${m} min`}
+function fmtClock(ms){const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor(s/60)%60;return `${h}:${String(m).padStart(2,'0')}`}
+
+/* ---------- état ---------- */
+let S = load();
+const UI = {tab:'market', player:null, stock:null, range:'1h', queue:[], toast:null, modalRefresh:null};
+
+function newGame(){
+  return {
+    v:1, started:false, ended:false, paused:false,
+    clock:0, lastReal:Date.now(), duration:210*60000, histEvery:1, tickCount:0,
+    settings:{freq:'normal', fee:0, sound:true, wake:true},
+    stocks: STOCKS.map(s => ({...s, price:s.base*rnd(.9,1.1), open:0, hist:[], effects:[]})),
+    players:[], log:[], pending:[], nextEventAt:0, lastTrade:null,
+  };
+}
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.v===1)return s}catch(e){}return newGame()}
+let saveTimer=null;
+function save(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}},200)}
+function saveNow(){clearTimeout(saveTimer);try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+
+const stock = id => S.stocks.find(s=>s.id===id);
+const player = id => S.players.find(p=>p.id===id);
+function addLog(type,text,tone='neutral',icon=''){S.log.unshift({c:S.clock,type,text,tone,icon});if(S.log.length>500)S.log.length=500}
+
+/* ---------- phases ---------- */
+function phase(){
+  const p = S.clock / S.duration;
+  if(p < .08) return {name:'Ouverture', vol:.8, ev:1.3, hot:false};
+  if(p < .75) return {name:'Séance', vol:1, ev:1, hot:false};
+  if(p < .94) return {name:'Heure de folie', vol:1.5, ev:.6, hot:true};
+  return {name:'Sprint final', vol:2, ev:.4, hot:true};
+}
+
+/* ---------- simulation ---------- */
+function effMult(st, key, def){
+  let v = def;
+  for(const e of st.effects){ if(e.until > S.clock){ v = key==='vol' ? v*e.vol : v + e.drift } }
+  return v;
+}
+function jump(st, pct, keep=.6){
+  // hausse et baisse symétriques en log (+25 % puis -25 % annoncés ≈ retour au départ)
+  const f = pct >= 0 ? 1+pct : 1/(1-pct);
+  st.price = clamp(st.price*f, .2, st.base*25);
+  st.base = Math.max(.5, st.base*Math.pow(f, keep));
+  return f-1;
+}
+function addEffect(st, minutes, {drift=0, vol=1}){st.effects.push({until:S.clock+minutes*60000, drift, vol})}
+
+function step(){
+  const dt = TICK_SEC/60; // minutes
+  S.clock += TICK_SEC*1000;
+  S.tickCount++;
+  const ph = phase();
+  for(const st of S.stocks){
+    st.effects = st.effects.filter(e => e.until > S.clock);
+    const vol = effMult(st,'vol',st.vol) * ph.vol;
+    const drift = effMult(st,'drift',st.drift);
+    const rev = -0.01*Math.log(st.price/st.base);           // rappel vers la "vraie valeur"
+    const r = (drift+rev)*dt + vol*Math.sqrt(dt)*gauss();
+    st.prev = st.price;
+    st.price = clamp(st.price*Math.exp(r), .2, st.base*25);
+    st.base = Math.max(.5, st.base*Math.exp(.25*st.vol*Math.sqrt(dt)*gauss())); // tendance de fond
+  }
+  if(S.tickCount % S.histEvery === 0){
+    for(const st of S.stocks) st.hist.push(Math.round(st.price*100)/100);
+    if(S.stocks[0].hist.length > MAX_HIST){
+      for(const st of S.stocks) st.hist = st.hist.filter((_,i)=>i%2===0);
+      S.histEvery *= 2;
+    }
+  }
+  // événements différés (rumeurs, pump & dump…)
+  const due = S.pending.filter(p => p.at <= S.clock);
+  S.pending = S.pending.filter(p => p.at > S.clock);
+  for(const p of due) fire(resolvePending(p));
+  // événement aléatoire
+  if(S.clock >= S.nextEventAt){ fire(randomEvent()); scheduleNext() }
+  if(S.clock >= S.duration) endGame();
+}
+function scheduleNext(){
+  const [a,b] = FREQ[S.settings.freq];
+  S.nextEventAt = S.clock + rnd(a,b)*phase().ev*60000;
+}
+
+function loop(){
+  const now = Date.now();
+  if(!S.started || S.ended || S.paused){ S.lastReal = now; return }
+  let n = 0;
+  while(now - S.lastReal >= TICK_SEC*1000 && n < 3600 && !S.ended){ S.lastReal += TICK_SEC*1000; step(); n++ }
+  if(n >= 3600) S.lastReal = now;
+  if(n){ save(); render(); if(UI.modalRefresh) UI.modalRefresh() }
+}
+
+/* ---------- événements ---------- */
+const GOOD = [
+  '{n} signe un contrat géant avec un émirat',
+  '{n} explose ses objectifs trimestriels',
+  'Le PDG de {n} annonce un produit « révolutionnaire »',
+  'Un milliardaire excentrique achète massivement {n}',
+  '{n} devient le sponsor officiel de la soirée',
+  'Une star de TikTok ne jure que par {n}',
+  '{n} obtient une subvention européenne',
+];
+const BAD = [
+  'Le PDG de {n} arrêté en état d\'ébriété',
+  'Rappel produit massif chez {n}',
+  '{n} rate complètement ses objectifs',
+  'Grève générale chez {n}',
+  'Fuite de données chez {n} : 3 millions de comptes',
+  '{n} visé par une enquête pour fraude',
+  'Un influenceur accuse {n} d\'arnaque',
+];
+function holders(st){return S.players.filter(p => (p.h[st.id]||0) > 1e-6)}
+function pctTxt(p){return `${p>=0?'📈 +':'📉 '}${Math.round(p*100)} %`}
+
+const EVENTS = [
+  {w:20, run(){ const st=pick(S.stocks), p=rnd(.08,.25)*(st.sector==='safe'?.5:1); jump(st,p); addEffect(st,rnd(4,8),{drift:.004});
+     return {tone:'good', icon:st.emoji, title:'Bonne nouvelle !', text:`${pick(GOOD).replace('{n}',st.name)}\n${st.name} ${pctTxt(p)}`} }},
+  {w:20, run(){ const st=pick(S.stocks), p=jump(st,-rnd(.08,.25)*(st.sector==='safe'?.5:1)); addEffect(st,rnd(4,8),{drift:-.004});
+     return {tone:'bad', icon:st.emoji, title:'Mauvaise nouvelle…', text:`${pick(BAD).replace('{n}',st.name)}\n${st.name} ${pctTxt(p)}`} }},
+  {w:8, run(){ const sec=pick(['food','tech']), p=rnd(.1,.2); S.stocks.filter(s=>s.sector===sec).forEach(s=>{jump(s,p*rnd(.7,1.3));addEffect(s,6,{drift:.003})});
+     return {tone:'good', icon:sec==='food'?'🍽️':'💻', title:'Boom sectoriel', text:`Euphorie sur ${SECTORS[sec]} : toutes les actions du secteur s'envolent !`} }},
+  {w:8, run(){ const sec=pick(['food','tech']), p=-rnd(.1,.22); S.stocks.filter(s=>s.sector===sec).forEach(s=>{jump(s,p*rnd(.7,1.3));addEffect(s,6,{drift:-.003})});
+     return {tone:'bad', icon:sec==='food'?'🤢':'🔌', title:'Crise sectorielle', text:`Panique sur ${SECTORS[sec]} : tout le secteur dévisse !`} }},
+  {w:4, run(){ S.stocks.forEach(s=>{ if(s.id==='GOLD') jump(s,rnd(.1,.2)); else jump(s,-rnd(.1,.28)*(s.sector==='safe'?.5:1),.4) });
+     return {tone:'bad', icon:'💥', title:'KRACH BOURSIER', text:'Tout le marché s\'effondre !\nSeul l\'or 🥇 fait office de refuge.'} }},
+  {w:5, run(){ const m=rnd(5,9); S.stocks.forEach(s=>addEffect(s,m,{drift:.006}));
+     return {tone:'good', icon:'🐂', title:'Marché haussier', text:`Les taureaux sont lâchés : tout le marché monte pendant ~${Math.round(m)} minutes !`} }},
+  {w:3, run(){ const m=rnd(5,8); S.stocks.forEach(s=>addEffect(s,m,{drift:-.005}));
+     return {tone:'bad', icon:'🐻', title:'Marché baissier', text:`Les ours rôdent : le marché glisse pendant ~${Math.round(m)} minutes.`} }},
+  {w:5, run(){ const st=pick(S.stocks.filter(s=>s.sector!=='safe')); addEffect(st,8,{vol:3});
+     return {tone:'neutral', icon:'🌪️', title:'Tempête de volatilité', text:`${st.emoji} ${st.name} devient complètement incontrôlable pendant 8 minutes. Ça passe ou ça casse.`} }},
+  {w:10, run(){ const st=pick(S.stocks), dir=Math.random()<.5?1:-1, delay=rnd(2,4);
+     S.pending.push({at:S.clock+delay*60000, kind:'rumor', id:st.id, dir, truth:Math.random()<.65});
+     return {tone:'neutral', icon:'🤫', title:'Rumeur…', text:`Des bruits de couloir disent que ${st.emoji} ${st.name} va ${dir>0?'EXPLOSER à la hausse':'S\'EFFONDRER'} d'ici quelques minutes.\nInfo ou intox ?`} }},
+  {w:7, run(){ const withH=S.stocks.filter(s=>holders(s).length); const st=withH.length?pick(withH):pick(S.stocks); const pct=rint(5,15)/100;
+     const hs=holders(st); hs.forEach(p=>{p.h[st.id]*=1+pct});
+     return {tone:'good', icon:'💰', title:'Dividende !', text:`${st.emoji} ${st.name} verse un dividende de ${Math.round(pct*100)} % en actions.\n${hs.length?'Bénéficiaires : '+hs.map(p=>p.name).join(', '):'Personne n\'en détenait… dommage !'}`} }},
+  {w:3, run(){ const st=pick(S.stocks.filter(s=>s.sector!=='safe')), p=rnd(.35,.6); jump(st,p,.8);
+     return {tone:'good', icon:'🤝', title:'OPA surprise !', text:`Un géant américain lance une OPA sur ${st.emoji} ${st.name}.\n${pctTxt(p)}`} }},
+  {w:2, run(){ const st=pick(S.stocks.filter(s=>s.sector==='tech')); jump(st,-5.5,.7);
+     if(Math.random()<.6) S.pending.push({at:S.clock+rnd(4,8)*60000, kind:'rescue', id:st.id});
+     return {tone:'bad', icon:'☠️', title:'FAILLITE', text:`${st.emoji} ${st.name} est en cessation de paiement !\n📉 -85 %\nUn repreneur va-t-il se manifester ?`} }},
+  {w:4, run(){ const st=stock('WAF'), p=rnd(.4,1); jump(st,p,.2);
+     S.pending.push({at:S.clock+rnd(3,6)*60000, kind:'dump', id:st.id});
+     return {tone:'good', icon:'🚀', title:'To the moon !', text:`Elon a tweeté un emoji 🐶.\n${st.name} ${pctTxt(p)}\n(Ça va durer… non ?)`} }},
+  {w:3, cond:()=>ranking().some(r=>r.value>0), run(){ const r=ranking().filter(r=>r.value>0)[0]; const p=r.p;
+     for(const k in p.h) p.h[k]*=.85;
+     return {tone:'bad', icon:'🕵️', title:'Contrôle fiscal', text:`Le fisc s'intéresse au plus gros portefeuille…\n${p.name} perd 15 % de ses positions !`} }},
+  {w:3, cond:()=>S.players.length>1, run(){ const r=ranking(); const p=r[r.length-1].p; const st=stock('PIO'); const gift=5;
+     p.h.PIO=(p.h.PIO||0)+gift/st.price; p.cost.PIO=(p.cost.PIO||0);
+     return {tone:'good', icon:'🎁', title:'Aide d\'État', text:`Le gouvernement vole au secours du plus pauvre :\n${p.name} reçoit ${gift} tickets d'actions ${st.emoji} ${st.name} offerts !`} }},
+  {w:3, run(){ S.stocks.forEach(s=>addEffect(s,5,{vol:.25}));
+     return {tone:'neutral', icon:'☕', title:'Pause café à Wall Street', text:'Les traders sont partis fumer : le marché est très calme pendant 5 minutes. Le moment de placer ses pions ?'} }},
+];
+function randomEvent(){ return weighted(EVENTS.filter(e=>!e.cond||e.cond())).run() }
+function resolvePending(p){
+  const st = stock(p.id);
+  if(p.kind==='rumor'){
+    if(p.truth){ const v=jump(st,rnd(.15,.35)*p.dir); addEffect(st,4,{drift:.004*p.dir});
+      return {tone:v>0?'good':'bad', icon:'✅', title:'La rumeur était vraie !', text:`${st.emoji} ${st.name} ${pctTxt(v)}`} }
+    const v=jump(st,-rnd(.05,.15)*p.dir);
+    return {tone:'neutral', icon:'❌', title:'Intox !', text:`La rumeur sur ${st.emoji} ${st.name} était fausse.\n${pctTxt(v)}`};
+  }
+  if(p.kind==='rescue'){ const v=rnd(1,2.5); jump(st,v,.6);
+    return {tone:'good', icon:'🦸', title:'Sauvetage !', text:`Un repreneur rachète ${st.emoji} ${st.name} !\n${pctTxt(v)}`} }
+  if(p.kind==='dump'){ const v=jump(st,-rnd(.5,1),.6);
+    return {tone:'bad', icon:'🪂', title:'Pump & dump', text:`Les gros portefeuilles ont tout revendu.\n${st.emoji} ${st.name} ${pctTxt(v)}`} }
+}
+function fire(ev){
+  if(!ev) return;
+  addLog('event', `${ev.title} — ${ev.text.replace(/\n/g,' ')}`, ev.tone, ev.icon);
+  UI.queue.push(ev);
+  showNextEvent();
+}
+
+/* ---------- portefeuilles ---------- */
+function pValue(p){let v=0;for(const k in p.h)v+=p.h[k]*stock(k).price;return v}
+function pPnl(p){return pValue(p)+p.out-p.in}
+function ranking(){return S.players.map(p=>({p,value:pValue(p),pnl:pPnl(p)})).sort((a,b)=>b.pnl-a.pnl||b.value-a.value)}
+
+function buy(pid, sid, tickets){
+  const p=player(pid), st=stock(sid);
+  const fee = Math.ceil(tickets*S.settings.fee/100);
+  const net = tickets - fee;
+  if(net<=0) return;
+  S.lastTrade = {pid, snap:JSON.stringify({h:p.h,cost:p.cost,in:p.in,out:p.out}), logLen:S.log.length};
+  p.h[sid]=(p.h[sid]||0)+net/st.price;
+  p.cost[sid]=(p.cost[sid]||0)+tickets;
+  p.in+=tickets;
+  addLog('trade', `${p.name} achète ${st.emoji} ${st.name} pour ${tickets} tickets (à ${fmtP(st.price)})`, 'neutral', '🟢');
+  save(); render();
+  toast(`✋ Prends ${tickets} ticket${tickets>1?'s':''} à ${p.name}`, true);
+}
+function sellValue(p,sid){ return Math.floor((p.h[sid]||0)*stock(sid).price*(1-S.settings.fee/100)) }
+function sell(pid, sid, tickets, all){
+  const p=player(pid), st=stock(sid);
+  const max = sellValue(p,sid);
+  tickets = all ? max : Math.min(tickets,max);
+  if(tickets<=0 && !all) return;
+  S.lastTrade = {pid, snap:JSON.stringify({h:p.h,cost:p.cost,in:p.in,out:p.out}), logLen:S.log.length};
+  const share = all ? 1 : tickets/max;
+  p.h[sid] -= p.h[sid]*share; p.cost[sid] = (p.cost[sid]||0)*(1-share);
+  if(all || p.h[sid]*st.price < .01){ delete p.h[sid]; delete p.cost[sid] }
+  p.out += tickets;
+  addLog('trade', `${p.name} vend ${st.emoji} ${st.name} et récupère ${tickets} tickets (à ${fmtP(st.price)})`, 'neutral', '🔴');
+  save(); render();
+  toast(`💸 Rends ${tickets} ticket${tickets>1?'s':''} à ${p.name}`, true);
+}
+function undo(){
+  const t=S.lastTrade; if(!t) return;
+  const p=player(t.pid); Object.assign(p, JSON.parse(t.snap));
+  S.log.shift(); S.lastTrade=null;
+  addLog('trade', `↩️ Dernière opération de ${p.name} annulée`, 'neutral');
+  save(); render(); toast('Opération annulée — pense à rendre/reprendre les tickets');
+}
+
+/* ---------- partie ---------- */
+function startGame(){
+  if(!S.players.length) return toast('Ajoute au moins un joueur');
+  S.started=true; S.clock=0; S.lastReal=Date.now();
+  S.stocks.forEach(s=>{s.open=s.price; s.hist=[Math.round(s.price*100)/100]});
+  scheduleNext();
+  S.nextEventAt = Math.min(S.nextEventAt, 3*60000);
+  fire({tone:'neutral', icon:'🔔', title:'Ouverture de la séance', text:`Les marchés sont ouverts pour ${fmtDur(S.duration)} !\nPlacez vos tickets, faites fructifier… ou pleurez.`});
+  saveNow(); unlockAudio(); requestWake(); render();
+}
+function endGame(){
+  if(S.ended) return;
+  S.ended=true;
+  addLog('event','Clôture de la séance','neutral','🔔');
+  saveNow(); render();
+  UI.queue.push({tone:'neutral', icon:'🔔', title:'Clôture des marchés !', text:'La séance est terminée. Va dans Classement pour voir le podium et rendre les tickets à chacun.', final:true});
+  showNextEvent();
+}
+
+/* ---------- son / vibration / écran ---------- */
+let actx=null;
+function unlockAudio(){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume()}catch(e){}}
+function beep(tone){
+  if(!S.settings.sound||!actx) return;
+  const notes = tone==='good'?[523,659,784]:tone==='bad'?[392,311,233]:[440,554,440];
+  notes.forEach((f,i)=>{const o=actx.createOscillator(),g=actx.createGain();o.type='triangle';o.frequency.value=f;
+    const t=actx.currentTime+i*.13;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.25,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+.25);
+    o.connect(g).connect(actx.destination);o.start(t);o.stop(t+.3)});
+}
+let wake=null;
+async function requestWake(){
+  if(!S.settings.wake||!('wakeLock' in navigator)) return;
+  try{ if(!wake||wake.released) wake=await navigator.wakeLock.request('screen') }catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ loop(); requestWake() } else saveNow() });
+document.addEventListener('pointerdown',()=>{unlockAudio(); if(S.started&&!S.ended) requestWake()},{passive:true});
+
+/* ---------- graphiques ---------- */
+function drawChart(cv, series, {fill=true, grid=false, baseline=null}={}){
+  const dpr=window.devicePixelRatio||1, w=cv.clientWidth, h=cv.clientHeight;
+  if(!w||!h) return;
+  cv.width=w*dpr; cv.height=h*dpr;
+  const c=cv.getContext('2d'); c.scale(dpr,dpr); c.clearRect(0,0,w,h);
+  let mn=Infinity,mx=-Infinity;
+  for(const s of series) for(const v of s.data){ if(v<mn)mn=v; if(v>mx)mx=v }
+  if(baseline!=null){mn=Math.min(mn,baseline);mx=Math.max(mx,baseline)}
+  if(!isFinite(mn)) return;
+  if(mx-mn<1e-9){mx+=1;mn-=1}
+  const pad=(mx-mn)*.08; mn-=pad; mx+=pad;
+  const Y=v=>h-(v-mn)/(mx-mn)*h;
+  if(grid){ c.fillStyle='#8b9bb0'; c.font='10px sans-serif'; c.strokeStyle='rgba(139,155,176,.12)'; c.lineWidth=1;
+    for(let i=1;i<4;i++){const v=mn+(mx-mn)*i/4,y=Y(v);c.beginPath();c.moveTo(0,y);c.lineTo(w,y);c.stroke();c.fillText(fmtP(v),4,y-3)} }
+  if(baseline!=null){c.setLineDash([3,4]);c.strokeStyle='rgba(139,155,176,.5)';c.beginPath();c.moveTo(0,Y(baseline));c.lineTo(w,Y(baseline));c.stroke();c.setLineDash([])}
+  for(const s of series){
+    const d=s.data; if(d.length<2) continue;
+    const X=i=>i/(d.length-1)*w;
+    c.beginPath(); d.forEach((v,i)=>i?c.lineTo(X(i),Y(v)):c.moveTo(X(i),Y(v)));
+    c.strokeStyle=s.color; c.lineWidth=s.width||2; c.lineJoin='round'; c.stroke();
+    if(fill&&series.length===1){ c.lineTo(w,h); c.lineTo(0,h); c.closePath();
+      const g=c.createLinearGradient(0,0,0,h); g.addColorStop(0,s.color+'55'); g.addColorStop(1,s.color+'00'); c.fillStyle=g; c.fill() }
+  }
+}
+function rangeSlice(arr){
+  const per = TICK_SEC*S.histEvery; // secondes par point
+  const n = UI.range==='15m' ? 900/per : UI.range==='1h' ? 3600/per : Infinity;
+  return n>=arr.length ? arr : arr.slice(-Math.max(2,Math.ceil(n)));
+}
+function indexHist(){
+  const len=S.stocks[0].hist.length, out=[];
+  for(let i=0;i<len;i++){let s=0;for(const st of S.stocks)s+=st.hist[i]/st.open;out.push(s/S.stocks.length*100)}
+  return out;
+}
+
+/* ---------- rendu ---------- */
+function render(){
+  renderHeader();
+  if(!S.started){ renderSetup(); $('#nav').innerHTML=''; return }
+  renderNav();
+  const m=$('#main');
+  const scroll=window.scrollY;
+  if(UI.tab==='market') m.innerHTML = UI.stock ? viewStock() : viewMarket();
+  else if(UI.tab==='players') m.innerHTML = UI.player ? viewPlayer() : viewPlayers();
+  else if(UI.tab==='rank') m.innerHTML = viewRank();
+  else if(UI.tab==='log') m.innerHTML = viewLog();
+  else m.innerHTML = viewSettings();
+  window.scrollTo(0,scroll);
+  requestAnimationFrame(drawAll);
+}
+function drawAll(){
+  document.querySelectorAll('canvas[data-spark]').forEach(cv=>{const st=stock(cv.dataset.spark);drawChart(cv,[{data:st.hist.slice(-90),color:st.color,width:1.5}],{fill:true})});
+  const ci=$('#cv-index'); if(ci) drawChart(ci,[{data:rangeSlice(indexHist()),color:'#e8eef5'}],{grid:true,baseline:100});
+  const cs=$('#cv-stock'); if(cs){const st=stock(UI.stock);drawChart(cs,[{data:rangeSlice(st.hist),color:st.color,width:2.5}],{grid:true,baseline:st.open})}
+}
+function renderHeader(){
+  if(!S.started){ UI.hdrBuilt=false; $('#hdr').innerHTML=`<div class="hrow"><div class="brand">📈 Bourse<span>Pio</span></div><div class="muted" style="font-size:12px">Nouvelle partie</div></div>`; return }
+  const ph=phase(), left=S.duration-S.clock;
+  const tick=S.stocks.map(s=>{const c=s.price/s.open-1;return `<b>${s.emoji} ${s.id}</b> ${fmtP(s.price)} <span class="${cls(c)}-t">${fmtPct(c)}</span>`}).join('');
+  if(!UI.hdrBuilt){ $('#hdr').innerHTML=`<div id="hdr-top"></div><div class="ticker mono"><div id="tk"></div></div>`; UI.hdrBuilt=true }
+  $('#tk').innerHTML=tick;
+  $('#hdr-top').innerHTML=`
+    <div class="hrow">
+      <div><div class="brand">📈 Bourse<span>Pio</span></div>
+        <span class="phase ${ph.hot&&!S.ended?'hot':''}">${S.ended?'Clôturé':S.paused?'⏸ En pause':ph.name}</span></div>
+      <div class="clock mono"><div style="font-size:18px;font-weight:700">${S.ended?'Fin':fmtDur(left)}</div><div class="muted">${S.ended?'séance terminée':'restantes · '+fmtClock(S.clock)+' écoulé'}</div></div>
+    </div>
+    <div class="progress"><div style="width:${clamp(S.clock/S.duration*100,0,100)}%"></div></div>`;
+}
+function renderNav(){
+  const tabs=[['market','📊','Marché'],['players','👥','Joueurs'],['rank','🏆','Classement'],['log','📰','Journal'],['settings','⚙️','Réglages']];
+  $('#nav').innerHTML=tabs.map(([k,i,l])=>`<button class="${UI.tab===k?'on':''}" onclick="go('${k}')"><i>${i}</i>${l}</button>`).join('');
+}
+function go(t){ if(UI.tab===t){UI.player=null;UI.stock=null} UI.tab=t; window.scrollTo(0,0); render() }
+
+function viewMarket(){
+  const idx=indexHist(), cur=idx[idx.length-1]||100;
+  return `
+  <div class="card">
+    <div class="between"><div><div class="muted" style="font-size:12px">INDICE PIO-40</div><div class="big mono">${cur.toFixed(1)}</div></div>
+      <span class="badge ${cls(cur-100)}">${fmtPct(cur/100-1)}</span></div>
+    <canvas id="cv-index" style="height:110px;margin-top:8px"></canvas>
+    <div style="margin-top:8px">${rangeSeg()}</div>
+  </div>
+  ${S.stocks.map(st=>{const c=st.price/st.open-1, d=st.prev?st.price-st.prev:0;
+    return `<div class="card stock ${Math.abs(d/st.price)>.01?(d>0?'flash-up':'flash-down'):''}" onclick="UI.stock='${st.id}';render();scrollTo(0,0)">
+      <div class="emoji">${st.emoji}</div>
+      <div style="min-width:0"><div class="sname">${esc(st.name)}</div><div class="stk">${st.id} · ${riskLabel(st)}</div></div>
+      <canvas data-spark="${st.id}" style="height:34px"></canvas>
+      <div><div class="price mono">${fmtP(st.price)}</div><div class="pct mono ${cls(c)}-t">${fmtPct(c)}</div></div>
+    </div>`}).join('')}
+  <div class="hint" style="text-align:center">Prix en tickets par action · variation depuis l'ouverture</div>`;
+}
+function riskLabel(st){return st.vol<.007?'🛡️ sûr':st.vol<.015?'⚖️ moyen':st.vol<.03?'🔥 risqué':'💀 casino'}
+function rangeSeg(){return `<div class="seg">${[['15m','15 min'],['1h','1 h'],['all','Tout']].map(([k,l])=>`<button class="${UI.range===k?'on':''}" onclick="event.stopPropagation();UI.range='${k}';render()">${l}</button>`).join('')}</div>`}
+
+function viewStock(){
+  const st=stock(UI.stock), c=st.price/st.open-1;
+  const hi=Math.max(...st.hist), lo=Math.min(...st.hist);
+  const hs=holders(st);
+  return `
+  <button class="ghost small" onclick="UI.stock=null;render()">← Marché</button>
+  <div class="card" style="margin-top:10px">
+    <div class="between"><div class="row" style="gap:10px;flex:none"><span style="font-size:36px">${st.emoji}</span><div><h2 style="margin:0">${esc(st.name)}</h2><div class="stk">${st.id} · ${riskLabel(st)} · ${SECTORS[st.sector]}</div></div></div></div>
+    <div class="between" style="margin-top:10px"><div class="big mono">${fmtP(st.price)} <span class="muted" style="font-size:13px">tickets</span></div><span class="badge ${cls(c)}">${fmtPct(c)}</span></div>
+    <canvas id="cv-stock" style="height:200px;margin-top:8px"></canvas>
+    <div style="margin-top:8px">${rangeSeg()}</div>
+    <div class="grid2" style="margin-top:10px;font-size:13px">
+      <div class="muted">Ouverture <b class="mono" style="color:var(--text)">${fmtP(st.open)}</b></div>
+      <div class="muted">Plus haut <b class="mono up-t">${fmtP(hi)}</b></div>
+      <div class="muted">Effets actifs <b style="color:var(--text)">${st.effects.length||'aucun'}</b></div>
+      <div class="muted">Plus bas <b class="mono down-t">${fmtP(lo)}</b></div>
+    </div>
+  </div>
+  <h3>Actionnaires</h3>
+  <div class="card">${hs.length?hs.map(p=>`<div class="between log-item"><span>${esc(p.name)}</span><b class="mono">${fmtT(p.h[st.id]*st.price)} 🎟️</b></div>`).join(''):'<div class="muted">Personne pour l\'instant</div>'}</div>
+  <button class="up" style="width:100%;margin-top:6px" onclick="pickPlayerFor('${st.id}')">Acheter ${st.emoji} pour un joueur</button>`;
+}
+
+function viewPlayers(){
+  return `
+  ${S.ended?'':`<div class="row" style="margin-bottom:10px"><input id="np" placeholder="Nouveau joueur" maxlength="20" onkeydown="if(event.key==='Enter')addPlayer()"><button class="primary" style="flex:none" onclick="addPlayer()">Ajouter</button></div>`}
+  ${S.players.length?S.players.map(p=>{const v=pValue(p),pl=pPnl(p);
+    return `<div class="card player" onclick="UI.player='${p.id}';render();scrollTo(0,0)">
+      ${avatar(p)}
+      <div style="flex:1;min-width:0"><div class="sname">${esc(p.name)}</div><div class="stk">En bourse : <b class="mono" style="color:var(--text)">${fmtT(v)} 🎟️</b></div></div>
+      <div style="text-align:right"><div class="mono ${cls(pl)}-t" style="font-weight:800">${fmtSigned(pl)}</div><div class="stk">gain/perte</div></div>
+    </div>`}).join(''):'<div class="empty">Aucun joueur</div>'}`;
+}
+function avatar(p){const i=S.players.indexOf(p);return `<div class="avatar" style="background:${AVATAR_COLORS[i%AVATAR_COLORS.length]}22;color:${AVATAR_COLORS[i%AVATAR_COLORS.length]}">${esc(p.name[0].toUpperCase())}</div>`}
+
+function viewPlayer(){
+  const p=player(UI.player); if(!p){UI.player=null;return viewPlayers()}
+  const v=pValue(p), pl=pPnl(p), ids=Object.keys(p.h);
+  return `
+  <button class="ghost small" onclick="UI.player=null;render()">← Joueurs</button>
+  <div class="card" style="margin-top:10px">
+    <div class="player">${avatar(p)}<h2 style="margin:0;flex:1">${esc(p.name)}</h2></div>
+    <div class="grid2" style="margin-top:12px">
+      <div><div class="stk">Valeur en bourse</div><div class="big mono">${fmtT(v)} 🎟️</div></div>
+      <div><div class="stk">Gain / perte total</div><div class="big mono ${cls(pl)}-t">${fmtSigned(pl)}</div></div>
+    </div>
+    <div class="stk" style="margin-top:6px">Déposé : ${fmtT(p.in)} · Retiré : ${fmtT(p.out)}</div>
+  </div>
+  ${S.ended?'':`<div class="grid2"><button class="up" onclick="openBuy('${p.id}')">＋ Investir</button><button class="down" onclick="openSell('${p.id}')" ${ids.length?'':'disabled style="opacity:.4"'}>－ Retirer</button></div>`}
+  <h3>Positions</h3>
+  ${ids.length?ids.map(k=>{const st=stock(k),val=p.h[k]*st.price,cost=p.cost[k]||0,g=cost?val/cost-1:0;
+    return `<div class="card stock" style="grid-template-columns:40px 1fr auto" onclick="${S.ended?'':`openSell('${p.id}','${k}')`}">
+      <div class="emoji">${st.emoji}</div>
+      <div><div class="sname">${esc(st.name)}</div><div class="stk mono">${p.h[k].toFixed(2)} actions · investi ${fmtT(cost)}</div></div>
+      <div style="text-align:right"><div class="price mono">${fmtT(val)} 🎟️</div>${cost?`<div class="pct mono ${cls(g)}-t">${fmtPct(g)}</div>`:''}</div>
+    </div>`}).join(''):'<div class="empty">Aucune position. Tape « Investir » pour placer des tickets.</div>'}
+  <h3>Historique</h3>
+  <div class="card">${S.log.filter(l=>l.type==='trade'&&l.text.startsWith(p.name+' ')).slice(0,15).map(l=>`<div class="log-item"><div class="log-t">${fmtClock(l.c)}</div>${esc(l.text)}</div>`).join('')||'<div class="muted">Rien encore</div>'}</div>`;
+}
+
+function viewRank(){
+  const r=ranking(), medals=['🥇','🥈','🥉'];
+  return `
+  ${S.ended?`<div class="inst">🔔 <b>Séance clôturée.</b> Chaque joueur récupère la valeur de son portefeuille en tickets (colonne « À rendre »).</div>`:''}
+  <h2>${S.ended?'Podium final':'Classement live'}</h2>
+  ${r.length?r.map((x,i)=>`<div class="card player">
+      <div class="rank">${medals[i]||(i+1)}</div>${avatar(x.p)}
+      <div style="flex:1;min-width:0"><div class="sname">${esc(x.p.name)}</div><div class="stk">${S.ended?'À rendre':'En bourse'} : <b class="mono" style="color:var(--text)">${fmtT(x.value)} 🎟️</b></div></div>
+      <div class="mono ${cls(x.pnl)}-t" style="font-weight:800;font-size:18px">${fmtSigned(x.pnl)}</div>
+    </div>`).join(''):'<div class="empty">Aucun joueur</div>'}
+  <div class="hint">Gain/perte = valeur actuelle + tickets déjà retirés − tickets déposés.</div>
+  ${r.length&&!S.ended?`<h3>Records</h3><div class="card" style="font-size:14px">
+     ${(()=>{const best=S.stocks.reduce((a,b)=>b.price/b.open>a.price/a.open?b:a),worst=S.stocks.reduce((a,b)=>b.price/b.open<a.price/a.open?b:a);
+       return `<div class="between log-item"><span>Meilleure action</span><b>${best.emoji} ${best.name} <span class="up-t">${fmtPct(best.price/best.open-1)}</span></b></div>
+               <div class="between log-item"><span>Pire action</span><b>${worst.emoji} ${worst.name} <span class="down-t">${fmtPct(worst.price/worst.open-1)}</span></b></div>
+               <div class="between log-item"><span>Tickets en jeu</span><b class="mono">${fmtT(r.reduce((s,x)=>s+x.value,0))} 🎟️</b></div>`})()}</div>`:''}`;
+}
+
+function viewLog(){
+  return `<h2>Journal</h2><div class="card">${S.log.map(l=>`<div class="log-item"><div class="log-t">${fmtClock(l.c)}</div>${l.icon?l.icon+' ':''}<span class="${l.tone==='good'?'up-t':l.tone==='bad'?'down-t':''}">${esc(l.text)}</span></div>`).join('')||'<div class="muted">Vide</div>'}</div>`;
+}
+
+function viewSettings(){
+  const s=S.settings;
+  return `
+  <h2>Contrôle de la partie</h2>
+  ${S.ended?`<div class="card"><button class="primary" style="width:100%" onclick="extend(30,true)">Rouvrir le marché +30 min</button></div>`:`
+  <div class="grid2">
+    <button class="${S.paused?'up':''}" onclick="togglePause()">${S.paused?'▶️ Reprendre':'⏸ Pause'}</button>
+    <button onclick="manualEvent()">⚡ Événement</button>
+    <button onclick="extend(30)">＋30 min</button>
+    <button onclick="extend(-15)">－15 min</button>
+  </div>
+  <button class="down" style="width:100%;margin-top:8px" onclick="confirmBox('Clôturer la séance maintenant ?',endGame)">🔔 Clôturer maintenant</button>`}
+  <h3>Réglages</h3>
+  <div class="card">
+    <div class="stk">Fréquence des événements</div>
+    <div class="seg" style="margin:6px 0 12px">${Object.keys(FREQ).map(k=>`<button class="${s.freq===k?'on':''}" onclick="S.settings.freq='${k}';scheduleNext();save();render()">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div>
+    <div class="stk">Frais de transaction (anti-allers-retours)</div>
+    <div class="seg" style="margin:6px 0 12px">${[0,2,5,10].map(f=>`<button class="${s.fee===f?'on':''}" onclick="S.settings.fee=${f};save();render()">${f} %</button>`).join('')}</div>
+    <div class="between log-item"><span>🔊 Son des événements</span><button class="small ${s.sound?'primary':''}" onclick="S.settings.sound=!S.settings.sound;save();render()">${s.sound?'Oui':'Non'}</button></div>
+    <div class="between log-item"><span>💡 Garder l'écran allumé</span><button class="small ${s.wake?'primary':''}" onclick="S.settings.wake=!S.settings.wake;save();if(S.settings.wake)requestWake();else if(wake)wake.release();render()">${s.wake?'Oui':'Non'}</button></div>
+  </div>
+  <h3>Joueurs</h3>
+  <div class="card">${S.players.map(p=>`<div class="between log-item"><span>${esc(p.name)}</span><span class="row" style="flex:none;gap:6px"><button class="small" onclick="renamePlayer('${p.id}')">✏️</button><button class="small" onclick="removePlayer('${p.id}')">🗑️</button></span></div>`).join('')||'<span class="muted">Aucun</span>'}</div>
+  <h3>Sauvegarde</h3>
+  <div class="grid2"><button onclick="exportGame()">📤 Exporter</button><button onclick="$('#imp').click()">📥 Importer</button></div>
+  <input type="file" id="imp" accept="application/json,.json" style="display:none" onchange="importGame(this.files[0])">
+  <div class="hint">La partie est sauvegardée automatiquement sur ce téléphone. Tu peux fermer l'appli : le marché rattrape le temps perdu à la réouverture.</div>
+  <button class="ghost" style="width:100%;margin-top:16px;color:var(--down)" onclick="confirmBox('Effacer la partie et tout recommencer ?',resetGame)">Nouvelle partie (tout effacer)</button>
+  <div class="hint" style="text-align:center;margin-top:16px">BoursePio · fonctionne hors-ligne</div>`;
+}
+
+function renderSetup(){
+  const s=S.settings, d=S.duration/60000;
+  $('#main').innerHTML=`
+  <div class="inst">🎟️ <b>Principe :</b> les joueurs confient des tickets à la banque (toi). L'appli les place en bourse. À tout moment, un joueur peut retirer — l'appli te dit combien de tickets lui rendre. Des événements aléatoires secouent le marché toute la soirée.</div>
+  <h3>Joueurs (${S.players.length})</h3>
+  <div class="row"><input id="np" placeholder="Prénom" maxlength="20" onkeydown="if(event.key==='Enter')addPlayer()"><button class="primary" style="flex:none" onclick="addPlayer()">Ajouter</button></div>
+  <div class="chips" style="margin-top:10px">${S.players.map(p=>`<span class="chip" onclick="removePlayer('${p.id}')">${esc(p.name)} ✕</span>`).join('')}</div>
+  <div class="hint">On peut aussi ajouter des joueurs pendant la partie.</div>
+  <h3>Durée de la séance</h3>
+  <div class="seg">${[[60,'1h'],[120,'2h'],[180,'3h'],[210,'3h30'],[240,'4h']].map(([m,l])=>`<button class="${d===m?'on':''}" onclick="S.duration=${m}*60000;save();render()">${l}</button>`).join('')}</div>
+  <h3>Événements aléatoires</h3>
+  <div class="seg">${Object.entries(FREQ).map(([k,[a,b]])=>`<button class="${s.freq===k?'on':''}" onclick="S.settings.freq='${k}';save();render()">${k[0].toUpperCase()+k.slice(1)}<br><span class="muted" style="font-size:10px">${a}–${b} min</span></button>`).join('')}</div>
+  <h3>Frais par opération</h3>
+  <div class="seg">${[0,2,5,10].map(f=>`<button class="${s.fee===f?'on':''}" onclick="S.settings.fee=${f};save();render()">${f} %</button>`).join('')}</div>
+  <h3>Actions cotées</h3>
+  <div class="card">${S.stocks.map(st=>`<div class="between log-item"><span>${st.emoji} ${st.name}</span><span class="stk">${riskLabel(st)} · ${fmtP(st.price)}</span></div>`).join('')}</div>
+  <button class="primary" style="width:100%;padding:16px;font-size:17px;margin:8px 0 20px" onclick="startGame()">🔔 Ouvrir les marchés</button>`;
+}
+
+/* ---------- actions UI ---------- */
+function addPlayer(){
+  const i=$('#np'), n=i.value.trim(); if(!n) return;
+  if(S.players.some(p=>p.name.toLowerCase()===n.toLowerCase())) return toast('Ce nom existe déjà');
+  S.players.push({id:'p'+Date.now().toString(36)+rint(0,999), name:n, h:{}, cost:{}, in:0, out:0});
+  if(S.started) addLog('trade',`${n} rejoint la partie`,'neutral','👋');
+  save(); render(); setTimeout(()=>{const x=$('#np');if(x)x.focus()},0);
+}
+function removePlayer(id){
+  const p=player(id);
+  const go=()=>{S.players=S.players.filter(x=>x.id!==id);save();render()};
+  if(S.started && Object.keys(p.h).length) confirmBox(`${p.name} a encore ${fmtT(pValue(p))} tickets en bourse. Supprimer quand même ?`,go); else go();
+}
+function renamePlayer(id){const p=player(id),n=prompt('Nouveau nom',p.name);if(n&&n.trim()){p.name=n.trim().slice(0,20);save();render()}}
+function togglePause(){S.paused=!S.paused;S.lastReal=Date.now();addLog('event',S.paused?'Marché en pause':'Reprise des cotations','neutral',S.paused?'⏸':'▶️');save();render()}
+function extend(min,reopen){
+  S.duration=Math.max(S.clock+5*60000,S.duration+min*60000);
+  if(reopen){S.ended=false;S.lastReal=Date.now();addLog('event','Réouverture du marché','neutral','🔔')}
+  save();render();toast(`Durée totale : ${fmtDur(S.duration)}`);
+}
+function manualEvent(){ if(S.paused) return toast('Le marché est en pause'); fire(randomEvent()); scheduleNext(); save(); render() }
+function resetGame(){localStorage.removeItem(KEY);S=newGame();UI.hdrBuilt=false;UI.tab='market';UI.player=null;UI.stock=null;render()}
+function exportGame(){
+  const blob=new Blob([JSON.stringify(S)],{type:'application/json'}), a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=`boursepio-${new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')}.json`; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+}
+function importGame(f){
+  if(!f) return; const r=new FileReader();
+  r.onload=()=>{try{const s=JSON.parse(r.result);if(s.v!==1)throw 0;S=s;S.lastReal=Date.now();saveNow();render();toast('Partie importée')}catch(e){toast('Fichier invalide')}};
+  r.readAsText(f);
+}
+
+/* ---------- modales ---------- */
+function sheet(html){ const t=$('#toast'); if(t) t.remove(); $('#layer').innerHTML=`<div class="sheet-bg" onclick="if(event.target===this)closeSheet()"><div class="sheet">${html}</div></div>` }
+function closeSheet(){ $('#layer').innerHTML=''; UI.modalRefresh=null }
+function confirmBox(msg,fn){
+  sheet(`<h2>${esc(msg)}</h2><div class="grid2" style="margin-top:14px"><button class="ghost" onclick="closeSheet()">Annuler</button><button class="down" id="cfm">Confirmer</button></div>`);
+  $('#cfm').onclick=()=>{closeSheet();fn()};
+}
+function pickPlayerFor(sid){
+  if(!S.players.length) return toast('Ajoute un joueur d\'abord');
+  sheet(`<h2>Pour qui ?</h2><div class="chips">${S.players.map(p=>`<button class="chip" onclick="openBuy('${p.id}','${sid}')">${esc(p.name)}</button>`).join('')}</div>`);
+}
+
+let T={};
+function openBuy(pid,sid){
+  T={mode:'buy',pid,sid:sid||S.stocks[0].id,amt:5};
+  drawTrade();
+}
+function openSell(pid,sid){
+  const p=player(pid), ids=Object.keys(p.h); if(!ids.length) return;
+  T={mode:'sell',pid,sid:sid&&p.h[sid]?sid:ids[0],amt:0};
+  T.amt=sellValue(p,T.sid);
+  drawTrade();
+}
+function drawTrade(){
+  const p=player(T.pid), buyM=T.mode==='buy';
+  const list = buyM ? S.stocks : S.stocks.filter(s=>p.h[s.id]);
+  sheet(`
+    <div class="between"><h2 style="margin:0">${buyM?'Investir':'Retirer'} · ${esc(p.name)}</h2><button class="small ghost" onclick="closeSheet()">✕</button></div>
+    <h3>Action</h3>
+    <div class="chips">${list.map(s=>`<button class="chip ${T.sid===s.id?'on':''}" onclick="T.sid='${s.id}';${buyM?'':'T.amt=sellValue(player(T.pid),T.sid);'}drawTrade()">${s.emoji} ${s.id}</button>`).join('')}</div>
+    <h3>Tickets</h3>
+    <div class="row"><button class="small" style="flex:none" onclick="setAmt(-1)">－</button><input id="amt" type="number" inputmode="numeric" min="1" value="${T.amt}" oninput="T.amt=Math.max(0,parseInt(this.value)||0);tradeInfo()" style="text-align:center;font-size:22px;font-weight:800"><button class="small" style="flex:none" onclick="setAmt(1)">＋</button></div>
+    <div class="grid4" style="margin-top:8px">${buyM?[5,10,20,50].map(n=>`<button class="small" onclick="setAmt(${n})">+${n}</button>`).join(''):[25,50,75,100].map(n=>`<button class="small" onclick="pctAmt(${n})">${n===100?'Tout':n+' %'}</button>`).join('')}</div>
+    <div class="card" id="tinfo" style="margin-top:12px;font-size:14px"></div>
+    <button class="${buyM?'up':'down'}" style="width:100%;padding:16px;font-size:17px" onclick="confirmTrade()">${buyM?'Valider l\'achat':'Valider la vente'}</button>`);
+  tradeInfo(); UI.modalRefresh=tradeInfo;
+}
+function setAmt(d){T.amt=Math.max(0,(T.amt||0)+d);if(T.mode==='sell')T.amt=Math.min(T.amt,sellValue(player(T.pid),T.sid));T.all=false;$('#amt').value=T.amt;tradeInfo()}
+function pctAmt(n){const m=sellValue(player(T.pid),T.sid);T.amt=Math.floor(m*n/100);T.all=n===100;$('#amt').value=T.amt;tradeInfo()}
+function tradeInfo(){
+  const el=$('#tinfo'); if(!el) return;
+  const p=player(T.pid), st=stock(T.sid), fee=S.settings.fee;
+  if(T.mode==='buy'){
+    const f=Math.ceil(T.amt*fee/100);
+    el.innerHTML=`<div class="between"><span class="muted">Cours ${st.emoji}</span><b class="mono">${fmtP(st.price)} 🎟️</b></div>
+      ${fee?`<div class="between"><span class="muted">Frais (${fee} %)</span><b class="mono">${f}</b></div>`:''}
+      <div class="between"><span class="muted">Actions obtenues</span><b class="mono">${((T.amt-f)/st.price).toFixed(2)}</b></div>
+      <div class="hint">✋ Tu prends <b>${T.amt}</b> tickets à ${esc(p.name)}</div>`;
+  } else {
+    const max=sellValue(p,T.sid); if(T.amt>max){T.amt=max;const a=$('#amt');if(a)a.value=max}
+    el.innerHTML=`<div class="between"><span class="muted">Cours ${st.emoji}</span><b class="mono">${fmtP(st.price)} 🎟️</b></div>
+      <div class="between"><span class="muted">Valeur position${fee?` (après ${fee} % de frais)`:''}</span><b class="mono">${max} 🎟️</b></div>
+      <div class="hint">💸 Tu rends <b>${T.amt}</b> tickets à ${esc(p.name)}${T.all||T.amt===max?' (position soldée)':''}</div>`;
+  }
+}
+function confirmTrade(){
+  if(S.ended) return closeSheet();
+  if(T.amt<=0) return toast('Montant invalide');
+  const m=T; closeSheet();
+  if(m.mode==='buy') buy(m.pid,m.sid,m.amt);
+  else sell(m.pid,m.sid,m.amt,m.all||m.amt>=sellValue(player(m.pid),m.sid));
+}
+
+let toastTimer=null;
+function toast(msg,withUndo){
+  clearTimeout(toastTimer);
+  let el=$('#toast'); if(el) el.remove();
+  el=document.createElement('div'); el.id='toast'; el.className='toast';
+  el.innerHTML=`<span>${esc(msg)}</span>${withUndo?'<button onclick="undo();this.parentNode.remove()">Annuler</button>':''}`;
+  document.body.appendChild(el);
+  toastTimer=setTimeout(()=>el.remove(), withUndo?8000:2500);
+}
+
+function showNextEvent(){
+  if($('#evt')||!UI.queue.length) return;
+  const ev=UI.queue.shift();
+  beep(ev.tone); try{navigator.vibrate&&navigator.vibrate(ev.tone==='bad'?[200,80,200]:[120])}catch(e){}
+  const d=document.createElement('div'); d.id='evt'; d.className='event-bg';
+  d.innerHTML=`<div class="event ${ev.tone}"><div class="kick">⚡ Flash info · ${fmtClock(S.clock)}</div><div class="ico">${ev.icon}</div><div class="ttl">${esc(ev.title)}</div><div class="txt">${esc(ev.text)}</div>
+    <button class="primary" style="width:100%">${UI.queue.length?`Suivant (${UI.queue.length})`:'OK'}</button></div>`;
+  d.querySelector('button').onclick=()=>{d.remove(); if(ev.final){UI.tab='rank';UI.player=null;render()} showNextEvent()};
+  document.body.appendChild(d);
+}
+
+/* ---------- démarrage ---------- */
+render();
+loop();
+setInterval(loop, 1000);
+window.addEventListener('resize',()=>requestAnimationFrame(drawAll));
+if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
