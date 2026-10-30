@@ -31,18 +31,23 @@ Une erreur ? Le bouton **Annuler** du message de confirmation annule la dernièr
 
 | Action | Profil |
 |---|---|
-| 🏦 Pio Banque | 🛡️ sûr, légère hausse de fond |
-| 🥇 Lingot d'Or | 🛡️ valeur refuge, monte quand le marché s'effondre |
-| 🍕 Pizza Holding · 🍺 Brasserie Mousse · 🥙 Kebab Corp | ⚖️ moyen |
-| 🚀 Fusée Lunaire | 🔥 risqué |
-| 🐶 WafCoin | 💀 casino |
+| 🧔 Bart | 🛡️ le daron : sûr, et il tient bon pendant les krachs |
+| 🐐 Maia | 🛡️ la goat : la meilleure progression sur la durée |
+| 🍟 Friterie de Lallaing | 🛡️ solide, avec des rushs |
+| 🖤 BlackShatta | 🔥 un truc de fou : bonne tendance mais ça bouge |
+| 🍐 Thaki l'homme poire | 🔥 moyen-risqué |
+| 🧠 Les Brainrots | 🔥 démarre bas, c'est le moment de le faire remonter |
+| 😱 Soledhie | 🔥 horrible en temps normal, mais des envolées qui choquent tout le monde |
+| 🎲 La RAAL | 💀 imprévisible |
+| 🎢 Aymeric de la RAAL | 💀 giga instable |
 
 ## Événements aléatoires
 
 Bonnes et mauvaises nouvelles, booms et crises de secteur, krach boursier, marché haussier/baissier,
 tempête de volatilité, rumeurs (vraies ou fausses, résolues quelques minutes plus tard),
-dividendes, OPA, faillites (avec sauvetage possible), pump & dump du WafCoin, contrôle fiscal
-du plus riche, aide d'État au plus pauvre, pause café…
+dividendes, OPA, faillites (avec sauvetage possible), Brainrot viral (puis dump), retour des Brainrots,
+Soledhie qui choque tout le monde, la RAAL qui fait n'importe quoi, Aymeric qui frappe encore,
+Maia qui reste la goat, rush à la friterie, contrôle fiscal du plus riche, Bart qui aide le plus pauvre, pause café…
 
 La partie s'accélère vers la fin : **Heure de folie** (75 % du temps), puis **Sprint final**
 (derniers 6 %), avec plus de volatilité et des événements plus fréquents.
