@@ -1,0 +1,8 @@
+{
+  "name": "boursepio",
+  "private": true,
+  "description": "Bourse de soirée avec des tickets",
+  "scripts": {
+    "dev": "node dev-server.js"
+  }
+}

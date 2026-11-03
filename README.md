@@ -1,61 +1,55 @@
 # 📈 BoursePio
 
-Bourse de soirée entre potes : les joueurs placent les tickets gagnés aux autres jeux de casino
-sur un marché fictif qui bouge en continu, secoué par des événements aléatoires.
+La bourse de la soirée : les équipes misent les tickets gagnés aux jeux de casino **à la hausse ou à la baisse**
+sur des actions (nos private jokes), avec un **multiplicateur ×1, ×2 ou ×5**. Le marché bouge en continu,
+secoué par des événements et des annonces à compte à rebours.
 
-**Une seule appli, sur un seul téléphone (celui du banquier).** Pas de serveur, pas de compte :
-tout est stocké sur le téléphone et l'appli fonctionne hors-ligne une fois chargée.
+Trois écrans, une seule appli :
 
-## Installer sur le téléphone
+| Écran | Qui | Adresse |
+|---|---|---|
+| 🏦 **Banque** | toi, sur ton tel | `https://wyrox07.github.io/BoursePio/` |
+| 📺 **Grand écran** | le PC branché à la télé | lien affiché dans l'onglet **Diffuser** (`…?room=CODE&tv=1`) |
+| 📱 **Joueurs** | chacun sur son tel | ils scannent le **QR code** (onglet Diffuser ou grand écran) |
 
-1. Sur GitHub : **Settings → Pages → Build and deployment → Source : GitHub Actions**.
-   Le workflow `.github/workflows/pages.yml` publie l'appli à chaque push sur `main`
-   (adresse : `https://wyrox07.github.io/BoursePio/`).
-2. Ouvre cette adresse sur ton téléphone (en 5G, une seule fois suffit).
-3. Ajoute-la à l'écran d'accueil :
-   - iPhone (Safari) : bouton Partager → **Sur l'écran d'accueil**
-   - Android (Chrome) : menu ⋮ → **Installer l'application**
-4. Ensuite elle se lance comme une vraie appli, même en mode avion.
+La partie tourne sur le tel de la banque (sauvegardée dessus, marche même hors-ligne).
+Les autres écrans la suivent en direct via un relais MQTT public et gratuit (EMQX + HiveMQ, sans compte).
 
-## Déroulé d'une partie
+## Règles (version courte)
 
-1. **Configuration** : ajoute les joueurs, choisis la durée (1h à 4h), la fréquence des événements et les frais.
-2. **Ouvrir les marchés** : les cours bougent toutes les 4 secondes.
-3. **Investir** : un joueur te donne X tickets → Joueurs → son nom → Investir → choisis l'action.
-4. **Retirer** : Joueurs → son nom → Retirer → l'appli te dit combien de tickets lui rendre.
-5. **Clôture** : à la fin du temps, le Classement affiche combien rendre à chacun.
+1. Une équipe donne des tickets à la banque et choisit : **une action**, **📈 hausse ou 📉 baisse**, **×1 / ×2 / ×5**.
+2. Si l'action va dans son sens, la mise prend de la valeur (×2 = deux fois plus vite, ×5 = cinq fois).
+3. Si la mise tombe à 0, elle est **liquidée 💀** (avec ×5, une baisse de 20 % suffit).
+4. L'équipe **encaisse quand elle veut** : la banque rend la valeur actuelle. Le montant est **bloqué 45 s**
+   au moment où tu tapes « Encaisser », le temps de compter les tickets.
+5. **Annonces 📣** : compte à rebours, puis l'action bouge de 35 à 80 %. Les paris sur cette action se gèlent 30 s avant.
 
-Une erreur ? Le bouton **Annuler** du message de confirmation annule la dernière opération.
+## Tester en local sur ton PC (avant de pousser)
 
-## Les actions
+Il faut [Node.js](https://nodejs.org) (version 18 ou plus) et Git.
 
-| Action | Profil |
+```bash
+git clone https://github.com/WyroX07/BoursePio.git
+cd BoursePio
+npm run dev
+```
+
+- Ouvre **http://localhost:5173** : c'est la banque. La page se **recharge toute seule** à chaque modification d'un fichier.
+- L'adresse « Sur ton tel » affichée dans le terminal marche depuis un tel sur le **même Wi-Fi**,
+  et le QR code de l'onglet Diffuser pointe automatiquement vers elle.
+- Grand écran en local : onglet Diffuser → **Ouvrir ici** (marche même sans internet, dans le même navigateur).
+
+Une fois content : `git add -A && git commit -m "…" && git push` → GitHub Pages met le site à jour en ~1 minute.
+
+## Organisation du code
+
+| Fichier | Rôle |
 |---|---|
-| 🧔 Bart | 🛡️ le daron : sûr, et il tient bon pendant les krachs |
-| 🐐 Maia | 🛡️ la goat : la meilleure progression sur la durée |
-| 🍟 Friterie de Lallaing | 🛡️ solide, avec des rushs |
-| 🖤 BlackShatta | 🔥 un truc de fou : bonne tendance mais ça bouge |
-| 🍐 Thaki l'homme poire | 🔥 moyen-risqué |
-| 🧠 Les Brainrots | 🔥 démarre bas, c'est le moment de le faire remonter |
-| 😱 Soledhie | 🔥 horrible en temps normal, mais des envolées qui choquent tout le monde |
-| 🎲 La RAAL | 💀 imprévisible |
-| 🎢 Aymeric de la RAAL | 💀 giga instable |
-
-## Événements aléatoires
-
-Bonnes et mauvaises nouvelles, booms et crises de secteur, krach boursier, marché haussier/baissier,
-tempête de volatilité, rumeurs (vraies ou fausses, résolues quelques minutes plus tard),
-dividendes, OPA, faillites (avec sauvetage possible), Brainrot viral (puis dump), retour des Brainrots,
-Soledhie qui choque tout le monde, la RAAL qui fait n'importe quoi, Aymeric qui frappe encore,
-Maia qui reste la goat, rush à la friterie, contrôle fiscal du plus riche, Bart qui aide le plus pauvre, pause café…
-
-La partie s'accélère vers la fin : **Heure de folie** (75 % du temps), puis **Sprint final**
-(derniers 6 %), avec plus de volatilité et des événements plus fréquents.
-Le menu Réglages permet aussi de déclencher un événement à la main, mettre en pause, ou rallonger la partie.
-
-## Bon à savoir
-
-- Garde l'appli au premier plan : l'option « Garder l'écran allumé » empêche la mise en veille.
-  Si le téléphone se verrouille quand même, le marché rattrape le temps écoulé à la réouverture.
-- Réglages → Exporter enregistre la partie dans un fichier (sauvegarde de secours).
-- Pour tester en local sur un ordinateur : `python3 -m http.server` dans le dossier, puis http://localhost:8000.
+| `js/data.js` | **Actions, textes des événements, réglages** : le fichier à modifier pour changer les noms/emojis |
+| `js/engine.js` | Moteur : cours, positions, liquidations, événements |
+| `js/host.js` | Écrans de la banque |
+| `js/screens.js` | Tel des joueurs + grand écran |
+| `js/sync.js` | Diffusion en direct (MQTT + onglets du même navigateur) |
+| `js/common.js` | Graphiques, QR code, sons, fenêtres |
+| `css/app.css` | Tout le style |
+| `dev-server.js` | Serveur de test local avec rechargement auto |
