@@ -32,14 +32,14 @@ function drawChart(cv, data, color, {grid=false, baseline=null, fill=true, width
   const pad=(mx-mn)*.1; mn-=pad; mx+=pad;
   const Y=v=>h-(v-mn)/(mx-mn)*h, X=i=>i/(data.length-1)*w;
   if(grid){
-    c.font='600 10px system-ui,sans-serif'; c.fillStyle='rgba(148,163,184,.7)'; c.strokeStyle='rgba(148,163,184,.1)'; c.lineWidth=1;
+    c.font='500 10px Plex,monospace'; c.fillStyle='rgba(237,230,214,.45)'; c.strokeStyle='rgba(237,230,214,.07)'; c.lineWidth=1;
     for(let i=1;i<4;i++){const v=mn+(mx-mn)*i/4,y=Math.round(Y(v))+.5;c.beginPath();c.moveTo(0,y);c.lineTo(w,y);c.stroke();c.fillText(fmtP(v),4,y-4)}
   }
-  if(baseline!=null){const y=Math.round(Y(baseline))+.5;c.setLineDash([3,5]);c.strokeStyle='rgba(148,163,184,.45)';c.lineWidth=1;c.beginPath();c.moveTo(0,y);c.lineTo(w,y);c.stroke();c.setLineDash([])}
+  if(baseline!=null){const y=Math.round(Y(baseline))+.5;c.setLineDash([2,4]);c.strokeStyle='rgba(237,230,214,.28)';c.lineWidth=1;c.beginPath();c.moveTo(0,y);c.lineTo(w,y);c.stroke();c.setLineDash([])}
   c.beginPath(); data.forEach((v,i)=>i?c.lineTo(X(i),Y(v)):c.moveTo(0,Y(v)));
   c.strokeStyle=color; c.lineWidth=width; c.lineJoin='round'; c.lineCap='round'; c.stroke();
   if(fill){ c.lineTo(w,h); c.lineTo(0,h); c.closePath();
-    const g=c.createLinearGradient(0,0,0,h); g.addColorStop(0,color+'40'); g.addColorStop(1,color+'00'); c.fillStyle=g; c.fill() }
+    const g=c.createLinearGradient(0,0,0,h); g.addColorStop(0,color+'2e'); g.addColorStop(1,color+'00'); c.fillStyle=g; c.fill() }
   // point final
   const lx=w-1, ly=Y(data[data.length-1]);
   c.beginPath(); c.arc(lx-2,ly,3,0,Math.PI*2); c.fillStyle=color; c.fill();
@@ -72,33 +72,38 @@ function beep(t){
 function buzz(t){try{navigator.vibrate&&navigator.vibrate(t==='bad'?[180,70,180]:[90])}catch(e){}}
 document.addEventListener('pointerdown',unlockAudio,{passive:true});
 
-/* ---------- overlays : événements, feuilles, toasts ---------- */
+/* ---------- overlays : flash info (ticket), feuilles, toasts ---------- */
+function fmtHMS(ms){const s=Math.max(0,Math.ceil(ms/1000));return `${Math.floor(s/3600)}:${String(Math.floor(s/60)%60).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`}
+const SYM={good:'▲',bad:'▼',neutral:'◆'};
 const EVQ=[]; let evTimer=null;
 function showEvent(ev,{auto=9000}={}){ EVQ.push(ev); if(!$('#evt')) nextEvent(auto) }
 function nextEvent(auto){
   const ev=EVQ.shift(); if(!ev) return;
-  beep(ev.tone==='neutral'&&ev.ann?'ann':ev.tone); buzz(ev.tone);
-  const d=document.createElement('div'); d.id='evt'; d.className=`evt evt-${ev.tone}`;
-  d.innerHTML=`<div class="evt-card">
-      <div class="evt-kick">⚡ Flash info</div>
-      <div class="evt-ico">${ev.icon}</div>
-      <div class="evt-ttl">${esc(ev.title)}</div>
-      <div class="evt-txt">${esc(ev.text)}</div>
-      ${ev.delta!=null?`<div class="evt-delta ${tone(ev.delta)}">${fmtPct(ev.delta)}</div>`:''}
-      <button class="btn btn-primary btn-block">${EVQ.length?`Suivant (${EVQ.length})`:'OK'}</button>
+  beep(ev.ann?'ann':ev.tone); buzz(ev.tone);
+  const d=document.createElement('div'); d.id='evt'; d.className='evt';
+  d.innerHTML=`<div class="ticket">
+      <div class="tk-top"><span>Flash info</span><span>${fmtClock(ev.c||0)}${ev.s?' · '+ev.s:''}</span></div>
+      <div class="perf"></div>
+      <div class="tk-body">
+        <div class="tk-ttl">${esc(ev.title)}</div>
+        <div class="tk-txt">${esc(ev.text)}</div>
+        ${ev.delta!=null?`<div class="tk-delta ${tone(ev.delta)}">${fmtPct(ev.delta)}</div>`:''}
+      </div>
+      <div class="perf"></div>
+      <div class="tk-foot"><span>BoursePio · séance</span><span class="chip chip-${ev.tone}">${SYM[ev.tone]||'◆'}</span></div>
+      <button class="btn">${EVQ.length?`Suivant · ${EVQ.length}`:'OK'}</button>
       <div class="evt-bar"><i style="animation-duration:${auto}ms"></i></div>
     </div>`;
-  const close=()=>{clearTimeout(evTimer);d.classList.add('out');setTimeout(()=>{d.remove();nextEvent(auto)},160)};
+  const close=()=>{clearTimeout(evTimer);d.classList.add('out');setTimeout(()=>{d.remove();nextEvent(auto)},150)};
   d.querySelector('button').onclick=close;
   d.onclick=e=>{if(e.target===d)close()};
   document.body.appendChild(d);
   evTimer=setTimeout(close,auto);
 }
-function banner(icon,text,t='bad'){
-  const b=document.createElement('div'); b.className=`banner banner-${t}`;
-  b.innerHTML=`<span>${icon}</span><span>${esc(text)}</span>`;
-  document.body.appendChild(b); beep(t);
-  setTimeout(()=>{b.classList.add('out');setTimeout(()=>b.remove(),200)},5000);
+/* événement mineur (liquidation…) : pas de fenêtre, le bandeau d'actu clignote */
+function flashTape(t='bad'){
+  beep(t);
+  document.querySelectorAll('.tape,.tv-tape').forEach(el=>{el.classList.add(t==='bad'?'flash-bad':'flash');setTimeout(()=>el.classList.remove('flash','flash-bad'),2600)});
 }
 let toastTimer=null;
 function toast(msg,action){
@@ -108,14 +113,14 @@ function toast(msg,action){
   el.innerHTML=`<span>${esc(msg)}</span>`;
   if(action){const b=document.createElement('button');b.textContent=action.label;b.onclick=()=>{el.remove();action.fn()};el.appendChild(b)}
   document.body.appendChild(el);
-  toastTimer=setTimeout(()=>{el.classList.add('out');setTimeout(()=>el.remove(),200)}, action?7000:2600);
+  toastTimer=setTimeout(()=>{el.classList.add('out');setTimeout(()=>el.remove(),150)}, action?6000:2400);
 }
 let sheetOnClose=null;
 function sheet(html,{onClose}={}){
   const t=$('#toast'); if(t) t.remove();
   closeSheet(true);
   const bg=document.createElement('div'); bg.id='sheet'; bg.className='sheet-bg';
-  bg.innerHTML=`<div class="sheet" role="dialog"><div class="grabber"></div>${html}</div>`;
+  bg.innerHTML=`<div class="sheet" role="dialog">${html}</div>`;
   bg.addEventListener('click',e=>{if(e.target===bg)closeSheet()});
   document.body.appendChild(bg); sheetOnClose=onClose||null;
   return bg.querySelector('.sheet');
@@ -124,70 +129,72 @@ function closeSheet(instant){
   const bg=$('#sheet'); if(!bg) return;
   const cb=sheetOnClose; sheetOnClose=null; if(cb) cb();
   if(instant){bg.remove();return}
-  bg.classList.add('out'); setTimeout(()=>bg.remove(),180);
+  bg.classList.add('out'); setTimeout(()=>bg.remove(),170);
 }
 function confirmBox(msg,fn,{ok='Confirmer',danger=true}={}){
-  sheet(`<h2 class="sheet-title">${esc(msg)}</h2><div class="grid2 mt"><button class="btn btn-ghost" onclick="closeSheet()">Annuler</button><button class="btn ${danger?'btn-down':'btn-primary'}" id="cfm">${ok}</button></div>`);
+  sheet(`<div class="sh"><h2>${esc(msg)}</h2></div><div class="grid2" style="margin-top:22px"><button class="btn" onclick="closeSheet()">Annuler</button><button class="btn ${danger?'btn-down':'btn-brass'}" id="cfm">${ok}</button></div>`);
   $('#cfm').onclick=()=>{closeSheet();fn()};
 }
 
 /* ---------- briques de rendu partagées (à partir d'un snapshot) ---------- */
-function stockTile(s, {onclick='', big=false}={}){
-  const lock=s.locked;
-  CHARTS['t-'+s.id]={data:s.hist,color:s.color,opts:{baseline:s.open}};
-  return `<div class="tile ${big?'tile-big':''} ${onclick?'press':''}" ${onclick?`onclick="${onclick}"`:''} style="--c:${s.color}">
-    <div class="tile-top">
-      <span class="tile-emoji">${s.emoji}</span>
-      <div class="tile-name"><b>${esc(s.name)}</b><span class="tag">${esc(s.tag)}</span></div>
-      ${big?'':`<canvas data-chart="t-${s.id}" class="chart-inline"></canvas>`}
-      <div class="tile-price"><b class="num">${fmtP(s.price)}</b><span class="chip-${tone(s.chg)} num">${fmtPct(s.chg)}</span></div>
-    </div>
-    ${big?`<canvas data-chart="t-${s.id}" class="chart-md"></canvas>`:''}
-    ${s.tags.length||lock?`<div class="tags">${lock?'<span class="pill pill-lock">🔒 Paris gelés</span>':''}${s.tags.map(t=>`<span class="pill pill-${t.t}">${t.icon} ${esc(t.label)}</span>`).join('')}</div>`:''}
+function sigLine(s){
+  if(!s.tags.length&&!s.locked) return '';
+  return `<div class="sig">${s.locked?'<span class="s-lock">■ Paris gelés</span>':''}${s.tags.map(t=>`<span class="s-${t.t}">${t.icon} ${esc(t.label)}</span>`).join('')}</div>`;
+}
+function quoteHead(){return `<div class="q-head label"><span>Action</span><span>Séance</span><span>Cours · var.</span></div>`}
+function quoteRow(s,{onclick=''}={}){
+  CHARTS['q-'+s.id]={data:s.hist,color:s.color,opts:{baseline:s.open,width:1.5}};
+  return `<div class="q-row ${onclick?'press':''}" ${onclick?`onclick="${onclick}"`:''} style="--c:${s.color}">
+    <div class="q-id"><span class="tk">${s.id}</span><span class="nm">${esc(s.name)}</span></div>
+    <canvas class="q-spark" data-chart="q-${s.id}"></canvas>
+    <div class="q-px"><b>${fmtP(s.price)}</b><span class="${tone(s.chg)}">${fmtPct(s.chg)}</span></div>
+    ${sigLine(s)}
   </div>`;
 }
-function posRow(p, s, {action=''}={}){
-  const g=p.value-p.paid;
+function swatch(t){return `<span class="sw" style="--c:${t.color}"></span>`}
+function posRow(p,s,{action=''}={}){
+  const g=Math.floor(p.value)-p.paid;
   return `<div class="pos">
-    <span class="pos-emoji">${s?s.emoji:'?'}</span>
-    <div class="pos-mid">
-      <b>${esc(s?s.name:p.s)}</b>
-      <span class="muted small">${p.dir>0?'📈':'📉'} ×${p.lev} · misé ${p.paid} · entrée ${fmtP(p.entry)}${p.lev>1||p.dir<0?` · 💀 ${fmtP(p.liq)}`:''}</span>
-    </div>
-    <div class="pos-val"><b class="num">${fmtT(p.value)}</b><span class="small num ${tone(g)}">${fmtSigned(g)}</span></div>
+    <div class="p-l"><b>${p.s}<em class="${p.dir>0?'up':'down'}">${p.dir>0?'▲':'▼'} ×${p.lev}</em></b>
+      <small>${p.paid} @ ${fmtP(p.entry)}${p.lev>1||p.dir<0?` · liq. ${fmtP(p.liq)}`:''}</small></div>
+    <div class="p-v"><b>${fmtT(p.value)}</b><span class="${tone(g)}">${fmtSigned(g)}</span></div>
     ${action}
   </div>`;
 }
-function avatar(t){return `<span class="avatar" style="--c:${t.color}">${esc((t.name[0]||'?').toUpperCase())}</span>`}
-function rankList(teams,{compact=false}={}){
-  if(!teams.length) return '<div class="empty">Aucune équipe</div>';
-  const medals=['🥇','🥈','🥉'];
-  return teams.map((t,i)=>`<div class="rank-row ${i<3?'top':''}">
-    <span class="rank-n">${medals[i]||i+1}</span>${avatar(t)}
-    <div class="rank-mid"><b>${esc(t.name)}</b>${compact?'':`<span class="muted small">${t.pos.length} position${t.pos.length>1?'s':''} · en jeu ${fmtT(t.value)} 🎟️</span>`}</div>
-    <b class="num rank-pnl ${tone(t.pnl)}">${fmtSigned(t.pnl)}</b>
+function rankList(teams,{max=99}={}){
+  if(!teams.length) return '<p class="note">Aucune équipe.</p>';
+  return teams.slice(0,max).map((t,i)=>`<div class="rk ${i===0?'first':''}">
+    <span class="rk-n">${String(i+1).padStart(2,'0')}</span>${swatch(t)}
+    <div class="rk-name">${esc(t.name)}<small>${t.pos.length} mise${t.pos.length>1?'s':''} · ${fmtT(t.value)} en jeu</small></div>
+    <b class="rk-p ${tone(t.pnl)}">${fmtSigned(t.pnl)}</b>
   </div>`).join('');
 }
 function annCard(a,stocks,clockNow){
   const s=stocks.find(x=>x.id===a.s); if(!s) return '';
   const left=a.at-clockNow;
-  return `<div class="ann" style="--c:${s.color}">
-    <span class="ann-ico">📣</span>
-    <div class="ann-mid"><b>${esc(a.label)}</b><span class="small muted">${s.emoji} ${esc(s.name)} va bouger fort. Hausse ou baisse ?${left<=30000?' · 🔒 paris gelés':''}</span></div>
-    <b class="ann-count num" data-count="${a.at}">${fmtCount(left)}</b>
+  return `<div class="ann">
+    <span class="label">Annonce · ${s.id}${left<=30000?' · paris gelés':''}</span>
+    <div class="ann-t">${esc(a.label)}</div>
+    <div class="ann-s">Ça va bouger très fort. Hausse ou baisse ?</div>
+    <b class="ann-c" data-count="${a.at}">${fmtCount(left)}</b>
   </div>`;
+}
+function tapeHtml(evs){
+  const e=[...(evs||[])].reverse()[0];
+  if(!e) return `<span class="t">--:--</span><span class="w">En attente des premières nouvelles…</span>`;
+  return `<span class="t">${fmtClock(e.c)}</span><b class="${e.tone==='good'?'up':e.tone==='bad'?'down':''}">${esc(e.title)}</b><span class="w">${esc(e.text.replace(/\n/g,' · '))}${e.delta!=null?' · '+fmtPct(e.delta):''}</span>`;
 }
 const RULES_HTML = `
   <div class="rules">
-    <div class="rule"><span>🎟️</span><div><b>Tu mises des tickets</b> auprès de la banque, sur une action de ton choix.</div></div>
-    <div class="rule"><span>📈</span><div><b>Hausse ou baisse ?</b> Tu gagnes si l'action va dans le sens que tu as choisi.</div></div>
-    <div class="rule"><span>✖️</span><div><b>Multiplicateur</b> ×1, ×2 ou ×5 : il multiplie tes gains… et tes pertes. Si ta mise tombe à 0, elle est <b>liquidée 💀</b>.</div></div>
-    <div class="rule"><span>💸</span><div><b>Encaisse quand tu veux</b> : la banque te rend la valeur actuelle de ta mise.</div></div>
-    <div class="rule"><span>📣</span><div><b>Annonces</b> : un compte à rebours, puis l'action bouge très fort. Les paris sont gelés 30 s avant.</div></div>
-    <div class="example">
-      <b>Exemple</b> : 10 tickets sur 🐐 Maia, 📈 Hausse, ×2.<br>
-      Maia monte de 20 % → ta mise vaut <b class="up">14</b>.<br>
-      Maia baisse de 20 % → ta mise vaut <b class="down">6</b>.<br>
-      Maia baisse de 50 % → <b class="down">liquidé</b>, tu perds les 10.
-    </div>
+    <div class="rule"><div><b>Tu mises des tickets</b><span>auprès de la banque, sur l'action de ton choix.</span></div></div>
+    <div class="rule"><div><b>Hausse ou baisse</b><span>Tu gagnes si l'action va dans le sens que tu as choisi.</span></div></div>
+    <div class="rule"><div><b>Multiplicateur ×1 ×2 ×5</b><span>Il multiplie tes gains… et tes pertes. Si ta mise tombe à 0, elle est liquidée.</span></div></div>
+    <div class="rule"><div><b>Encaisse quand tu veux</b><span>La banque te rend la valeur actuelle de ta mise.</span></div></div>
+    <div class="rule"><div><b>Annonces</b><span>Compte à rebours, puis l'action bouge très fort. Les paris sont gelés 30 s avant.</span></div></div>
+  </div>
+  <div class="example">
+    10 tickets sur MAIA · ▲ hausse · ×2<br>
+    MAIA +20 % → ta mise vaut <b class="up">14</b><br>
+    MAIA −20 % → ta mise vaut <b class="down">6</b><br>
+    MAIA −50 % → <b class="down">liquidée</b>
   </div>`;

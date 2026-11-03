@@ -10,21 +10,18 @@ const MYKEY='boursepio.team.'+ROOM;
 
 function vClock(){ if(!VS) return 0; return VS.clock+(VS.started&&!VS.paused&&!VS.ended?Math.min(Date.now()-recvAt,8000):0) }
 function stale(){ return !VS || Date.now()-recvAt>25000 }
+const draw = () => IS_TV ? renderTV() : renderViewer();
 
 function screensInit(){
   document.body.classList.add(IS_TV?'mode-tv':'mode-viewer');
-  Sync.onSnap=s=>{
-    const first=!VS; VS=s; recvAt=Date.now();
-    handleEvents(first);
-    IS_TV?renderTV():renderViewer();
-  };
+  Sync.onSnap=s=>{ const first=!VS; VS=s; recvAt=Date.now(); draw(); handleEvents(first) };
   Sync.connect(ROOM,{subscribe:true});
-  Sync.listeners.push(()=>IS_TV?renderTV():renderViewer());
+  Sync.listeners.push(draw);
   IS_TV?tvStart():renderViewer();
   setInterval(()=>{
     const now=vClock();
     document.querySelectorAll('[data-count]').forEach(el=>el.textContent=fmtCount(+el.dataset.count-now));
-    const t=$('#tleft'); if(t&&VS&&VS.started&&!VS.ended) t.textContent=fmtDur(VS.dur-now);
+    const c=$('#hclock'); if(c&&VS&&VS.started&&!VS.ended) c.textContent=fmtHMS(VS.dur-now);
     const st=$('#stale'); if(st) st.hidden=!stale()||!VS;
   },1000);
   window.addEventListener('resize',()=>requestAnimationFrame(()=>drawCharts()));
@@ -33,100 +30,107 @@ function handleEvents(first){
   const evs=VS.evs||[], max=evs.reduce((m,e)=>Math.max(m,e.id),0);
   if(first||lastEv===null||max<lastEv){ lastEv=max; return }   // pas d'avalanche à l'arrivée
   for(const e of evs) if(e.id>lastEv){
-    if(e.minor) banner(e.icon,`${e.title} — ${e.text}`,e.tone);
+    if(e.minor) flashTape(e.tone);
     else showEvent(e,{auto:IS_TV?10000:7000});
   }
   lastEv=max;
 }
+function phaseLabel(){ return VS.ended?'Clôturé':VS.paused?'En pause':VS.phase.name }
 
 /* ---------- tel des joueurs ---------- */
 function renderViewer(){
   CHARTS={};
   const h=$('#hdr'), m=$('#main'), n=$('#nav');
-  if(!ROOM){ h.innerHTML=''; m.innerHTML=`<section class="hero"><h1>BoursePio</h1><p>Scanne le QR code affiché par la banque pour suivre la partie.</p></section>${RULES_HTML}`; n.innerHTML=''; return }
-  const now=vClock(), live=Sync.status==='live';
-  h.innerHTML=`<div class="hdr-row">
-      <div class="hdr-left"><div class="brand">Bourse<span>Pio</span></div>
-        ${VS&&VS.phase?`<span class="pill ${VS.phase.hot&&!VS.ended?'pill-hot':''}">${VS.ended?'Clôturé':VS.paused?'⏸ Pause':VS.phase.name}</span>`:''}</div>
-      <span class="live ${live&&!stale()?'on':''}"><i></i>${ROOM}</span>
-      ${VS&&VS.started?`<div class="hdr-time"><b class="num" id="tleft">${VS.ended?'Fin':fmtDur(VS.dur-now)}</b><span>${VS.ended?'terminé':'restantes'}</span></div>`:''}
+  if(!ROOM){ h.innerHTML=''; n.innerHTML='';
+    m.innerHTML=`<section class="hero"><h1>Bourse<i>Pio</i></h1><p>Scanne le QR code affiché par la banque pour suivre la partie.</p></section><div class="sec"><span class="label">Règles</span></div>${RULES_HTML}`; return }
+  const now=vClock(), live=Sync.status==='live'&&!stale(), on=VS&&VS.started;
+  h.innerHTML=`<div class="hdr">
+      <div><div class="mark">Bourse<i>Pio</i></div>
+        <div class="meta">${on?`<span class="${VS.phase.hot&&!VS.ended?'hot':''}">${phaseLabel()}</span>`:''}<span class="dot ${live?'on':''}">${ROOM}</span></div></div>
+      ${on?`<div class="clock"><b id="hclock">${VS.ended?'0:00:00':fmtHMS(VS.dur-now)}</b><span>${VS.ended?'Séance close':'Restant'}</span></div>`:''}
     </div>
-    ${VS&&VS.started?`<div class="progress"><i style="transform:scaleX(${clamp(VS.clock/VS.dur,0,1)})"></i></div>`:''}
-    <div id="stale" class="stale" ${stale()&&VS?'':'hidden'}>📡 Pas de nouvelles de la banque… reconnexion</div>`;
-  const tabs=[['market','📈','Marché'],['rank','🏆','Classement'],['me','🎟️','Mon équipe'],['rules','❓','Règles']];
-  n.innerHTML=tabs.map(([k,i,l])=>`<button class="${VUI.tab===k?'on':''}" onclick="VUI.tab='${k}';scrollTo(0,0);renderViewer()"><i>${i}</i><span>${l}</span></button>`).join('');
-  if(!VS){ m.innerHTML=`<div class="waiting"><div class="spinner"></div><b>Connexion à la partie ${esc(ROOM)}…</b><span class="muted small">${live?'Connecté, en attente de la banque.':'Connexion au relais en direct…'}</span></div>${VUI.tab==='rules'?RULES_HTML:''}`; return }
-  if(!VS.started){ m.innerHTML=`<div class="waiting"><span style="font-size:42px">⏳</span><b>La partie va bientôt commencer</b></div>${RULES_HTML}`; return }
+    ${on?`<div class="bar"><i style="transform:scaleX(${clamp(VS.clock/VS.dur,0,1)})"></i></div><div class="tape">${tapeHtml(VS.evs)}</div>`:'<div style="height:12px"></div>'}
+    <div id="stale" class="stale" ${stale()&&VS?'':'hidden'}>Pas de nouvelles de la banque, reconnexion…</div>`;
+  const tabs=[['market','Marché'],['rank','Classement'],['me','Mon équipe'],['rules','Règles']];
+  n.innerHTML=tabs.map(([k,l])=>`<button class="${VUI.tab===k?'on':''}" onclick="VUI.tab='${k}';scrollTo(0,0);renderViewer()">${l}</button>`).join('');
+  if(VUI.tab==='rules'){ m.innerHTML=`<div class="sec"><span class="label">Règles</span></div>${RULES_HTML}`; return }
+  if(!VS){ m.innerHTML=`<div class="waiting"><div class="spin"></div><span>Connexion à la partie ${esc(ROOM)}…</span><span class="faint">${Sync.status==='live'?'En attente de la banque':'Connexion au relais en direct'}</span></div>`; return }
+  if(!VS.started){ m.innerHTML=`<div class="waiting"><span>La partie va bientôt commencer.</span></div><div class="sec"><span class="label">Règles</span></div>${RULES_HTML}`; return }
   const y=scrollY;
-  if(VUI.tab==='market') m.innerHTML=`${VS.ann.map(a=>annCard(a,VS.stocks,now)).join('')}<div class="tiles">${VS.stocks.map(s=>stockTile(s)).join('')}</div>
-    <p class="hint center">Pour miser ou encaisser, va voir la banque.</p>`;
-  else if(VUI.tab==='rank') m.innerHTML=`<div class="card">${rankList(VS.teams)}</div><p class="hint">Bilan = tickets encaissés + valeur des mises en cours − tickets misés.</p>`;
-  else if(VUI.tab==='me') m.innerHTML=viewMine();
-  else m.innerHTML=RULES_HTML;
+  if(VUI.tab==='market') m.innerHTML=`${VS.ann.map(a=>annCard(a,VS.stocks,now)).join('')}
+    <div class="sec"><span class="label">Cotations</span><span class="label">Mise auprès de la banque</span></div>
+    ${VS.stocks.map(s=>quoteRow(s)).join('')}
+    <p class="note">Cours en tickets par action. Variation depuis l'ouverture.</p>`;
+  else if(VUI.tab==='rank') m.innerHTML=`<div class="sec"><span class="label">Classement</span><span class="label">Bilan</span></div>${rankList(VS.teams)}
+    <p class="note">Bilan = encaissé + valeur des mises en cours − misé.</p>`;
+  else m.innerHTML=viewMine();
   scrollTo(0,y);
   requestAnimationFrame(()=>drawCharts(m));
 }
 function viewMine(){
   let my=null; try{my=localStorage.getItem(MYKEY)}catch(e){}
   const t=VS.teams.find(x=>x.id===my);
-  const picker=`<div class="chips">${VS.teams.map(x=>`<button class="chip ${x.id===my?'on':''}" onclick="setMine('${x.id}')">${avatar(x)} ${esc(x.name)}</button>`).join('')}</div>`;
-  if(!t) return `<h3 class="mt-0">C'est quoi ton équipe ?</h3>${picker||'<div class="empty">Aucune équipe pour l\'instant</div>'}`;
+  const picker=VS.teams.map(x=>`<button class="list-opt ${x.id===my?'on':''}" style="grid-template-columns:12px 1fr" onclick="setMine('${x.id}')">${swatch(x)}<span class="t-name" style="font-size:20px">${esc(x.name)}</span></button>`).join('');
+  if(!t) return `<div class="sec"><span class="label">Choisis ton équipe</span></div>${picker||'<p class="note">Aucune équipe pour l\'instant.</p>'}`;
   const rank=VS.teams.indexOf(t)+1;
-  return `<div class="card team" style="--c:${t.color}">
-      <div class="team-head">${avatar(t)}<div class="team-name"><b>${esc(t.name)}</b><span class="muted small">${rank}${rank===1?'re':'e'} sur ${VS.teams.length}</span></div>
-        <div class="team-pnl"><b class="num ${tone(t.pnl)}">${fmtSigned(t.pnl)}</b><span class="muted small">bilan</span></div></div>
-      ${t.pos.length?`<div class="pos-list">${t.pos.map(p=>posRow(p,VS.stocks.find(s=>s.id===p.s))).join('')}</div>`:'<p class="muted">Aucune mise en cours. Va voir la banque pour miser !</p>'}
-    </div>
-    <p class="hint">Les montants sont ce que la banque te rendrait si tu encaissais maintenant. 💀 = cours où la mise est liquidée.</p>
-    <h3>Changer d'équipe</h3>${picker}`;
+  return `<section class="team">
+      <div class="t-head">${swatch(t)}<span class="t-name">${esc(t.name)}</span><b class="t-pnl ${tone(t.pnl)}">${fmtSigned(t.pnl)}</b></div>
+      <div class="t-sub">${rank}${rank===1?'re':'e'} sur ${VS.teams.length} · misé ${fmtT(t.in)} · encaissé ${fmtT(t.out)}</div>
+      ${t.pos.length?`<div class="pos-list">${t.pos.map(p=>posRow(p)).join('')}</div>`:'<p class="note" style="margin-left:19px">Aucune mise en cours. Va voir la banque !</p>'}
+    </section>
+    <p class="note">Valeur = ce que la banque te rendrait maintenant. « liq. » = cours où la mise tombe à zéro.</p>
+    <div class="sec"><span class="label">Changer d'équipe</span></div>${picker}`;
 }
 function setMine(id){ try{localStorage.setItem(MYKEY,id)}catch(e){} renderViewer() }
 
 /* ---------- grand écran ---------- */
-function tvFeed(){
-  const n=VS.stocks.length, cols=n===2||n===4?2:3, free=(cols-n%cols)%cols;
-  if(!free) return '';
-  const evs=[...VS.evs].reverse().slice(0,free>1?7:5);
-  return `<div class="card tv-feed" style="grid-column:span ${free}"><h3 class="mt-0">📰 Dernières infos</h3>
-    ${evs.map(e=>`<div class="feed"><span>${e.icon}</span><div><b>${esc(e.title)}</b><span class="muted small">${esc(e.text.split('\n')[0])}</span></div>${e.delta!=null?`<b class="num ${tone(e.delta)}">${fmtPct(e.delta)}</b>`:''}</div>`).join('')}</div>`;
-}
 function tvStart(){
-  $('#main').innerHTML=`<div class="tv-start"><div class="brand brand-xl">Bourse<span>Pio</span></div>
-    <p class="muted">Partie ${esc(ROOM)}</p>
-    <button class="btn btn-primary btn-xl" onclick="tvGo()">▶ Lancer l'affichage</button>
-    <p class="hint">Plein écran + son des événements</p></div>`;
+  $('#main').innerHTML=`<div class="tv-start"><div class="mark">Bourse<i>Pio</i></div>
+    <span class="label">Partie ${esc(ROOM)}</span>
+    <button class="btn btn-brass btn-xl" onclick="tvGo()">Lancer l'affichage</button>
+    <span class="note">Plein écran et son des événements</span></div>`;
 }
 function tvGo(){
   unlockAudio();
   try{document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen()}catch(e){}
   VUI.tvOn=true; renderTV();
 }
+function qrPanel(){ return `<div class="qr-block">${qrSvg(viewerUrl(ROOM))}<div><h2>Suis tes mises</h2><p>Scanne pour voir les cours et ton équipe sur ton tel.</p></div></div>` }
 function renderTV(){
   if(!VUI.tvOn) return;
   CHARTS={};
   const m=$('#main'), now=vClock(), live=Sync.status==='live'&&!stale();
   if(!VS||!VS.started){
-    m.innerHTML=`<div class="tv-wait"><div class="brand brand-xl">Bourse<span>Pio</span></div>
-      <p>${VS?'La partie va bientôt commencer':'Connexion à la partie '+esc(ROOM)+'…'}</p>
-      <div class="tv-qr">${qrSvg(viewerUrl(ROOM))}<span>Scanne pour suivre sur ton tel</span></div></div>`;
+    m.innerHTML=`<div class="tv-start"><div class="mark">Bourse<i>Pio</i></div>
+      <span class="label">${VS?'La séance va bientôt ouvrir':'Connexion à la partie '+esc(ROOM)+'…'}</span>
+      <div style="width:min(560px,80vw)">${qrPanel()}</div></div>`;
     return;
   }
-  const ev=[...VS.evs].reverse().find(e=>!e.minor);
   m.innerHTML=`<div class="tv">
     <header class="tv-head">
-      <div class="brand brand-lg">Bourse<span>Pio</span></div>
-      <span class="pill pill-lg ${VS.phase.hot&&!VS.ended?'pill-hot':''}">${VS.ended?'Clôturé':VS.paused?'⏸ Pause':VS.phase.name}</span>
-      <span class="live ${live?'on':''}"><i></i>${live?'En direct':'Reconnexion…'}</span>
-      <div class="tv-time"><b class="num" id="tleft">${VS.ended?'Terminé':fmtDur(VS.dur-now)}</b><span>${VS.ended?'':'restantes'}</span></div>
+      <div class="mark">Bourse<i>Pio</i></div>
+      <div class="meta"><span class="${VS.phase.hot&&!VS.ended?'hot':''}">${phaseLabel()}</span><span class="dot ${live?'on':''}">${live?'En direct':'Reconnexion'}</span></div>
+      <div class="tv-clock"><b id="hclock">${VS.ended?'0:00:00':fmtHMS(VS.dur-now)}</b><span>${VS.ended?'Séance close':'Temps restant'}</span></div>
     </header>
-    <div class="progress"><i style="transform:scaleX(${clamp(VS.clock/VS.dur,0,1)})"></i></div>
-    <section class="tv-tiles n${VS.stocks.length}">${VS.stocks.map(s=>stockTile(s,{big:true})).join('')}${tvFeed()}</section>
+    <section class="board">
+      <div class="b-head label"><span>Action</span><span>Séance</span><span>Cours</span><span>Var.</span></div>
+      ${VS.stocks.map(boardRow).join('')}
+    </section>
     <aside class="tv-side">
       ${VS.ann.map(a=>annCard(a,VS.stocks,now)).join('')}
-      <div class="card tv-rank"><h3 class="mt-0">🏆 Classement</h3>${rankList(VS.teams.slice(0,8),{compact:true})}</div>
-      <div class="tv-qr">${qrSvg(viewerUrl(ROOM))}<span>Suis tes mises<br>sur ton tel</span></div>
+      <div class="tv-rank"><div class="sec" style="margin-top:0"><span class="label">Classement</span><span class="label">Bilan</span></div>${rankList(VS.teams,{max:8})}</div>
+      ${qrPanel()}
     </aside>
-    <footer class="tv-foot">${ev?`<span>${ev.icon}</span><b>${esc(ev.title)}</b><span class="muted">${esc(ev.text.replace(/\n/g,' · '))}</span>`:'<span class="muted">Misez à la hausse ou à la baisse auprès de la banque 🎟️</span>'}</footer>
+    <footer class="tv-tape">${tapeHtml(VS.evs)}</footer>
   </div>`;
   requestAnimationFrame(()=>drawCharts(m));
+}
+function boardRow(s){
+  CHARTS['b-'+s.id]={data:s.hist,color:s.color,opts:{baseline:s.open,width:2}};
+  return `<div class="b-row" style="--c:${s.color}">
+    <div class="b-id"><span class="tk">${s.id}</span><span class="nm">${esc(s.name)}</span></div>
+    <div class="b-mid"><canvas class="b-spark" data-chart="b-${s.id}"></canvas>${sigLine(s)}</div>
+    <div class="b-px">${fmtP(s.price)}</div>
+    <div class="b-ch ${tone(s.chg)}">${fmtPct(s.chg)}</div>
+  </div>`;
 }

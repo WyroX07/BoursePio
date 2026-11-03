@@ -86,7 +86,7 @@ function tick(){
 /* ---------- positions ---------- */
 function liqPrice(p){return p.dir>0 ? p.entry*(1-1/p.lev) : p.entry*(1+1/p.lev)}
 function posValue(p){const r=stock(p.s).price/p.entry;return Math.max(0,p.stake*(1+p.dir*p.lev*(r-1)))}
-function teamValue(t){return S.pos.filter(p=>p.t===t.id).reduce((s,p)=>s+posValue(p),0)}
+function teamValue(t){return S.pos.filter(p=>p.t===t.id).reduce((s,p)=>s+Math.floor(posValue(p)),0)}
 function ranking(){
   return S.teams.map(t=>{const v=teamValue(t);return {t,value:v,pnl:v+t.out-t.in}}).sort((a,b)=>b.pnl-a.pnl||b.value-a.value);
 }
@@ -104,7 +104,7 @@ function openPos(tid,sid,dir,lev,tickets){
   const stake=tickets*(1-S.settings.fee/100);
   const p={id:uid(),t:tid,s:sid,dir,lev,paid:tickets,stake,entry:st.price,at:S.clock};
   S.pos.push(p); t.in+=tickets;
-  addLog(`${t.name} mise ${tickets} sur ${st.emoji} ${st.name} (${dir>0?'hausse':'baisse'} ×${lev})`,'neutral','🟢');
+  addLog(`${t.name} mise ${tickets} sur ${st.name} (${dir>0?'hausse':'baisse'} ×${lev})`,'neutral','🟢');
   save(); Hooks.onChange(); return {pos:p};
 }
 function quote(pid){const p=S.pos.find(x=>x.id===pid);return p?{pid,amount:Math.floor(posValue(p)),at:Date.now(),clock:S.clock}:null}
@@ -114,7 +114,7 @@ function closePos(q){
   const t=team(p.t), st=stock(p.s);
   snapUndo('encaissement');
   S.pos=S.pos.filter(x=>x!==p); t.out+=q.amount;
-  addLog(`${t.name} encaisse ${q.amount} sur ${st.emoji} ${st.name} (misé ${p.paid})`,'neutral','💸');
+  addLog(`${t.name} encaisse ${q.amount} sur ${st.name} (misé ${p.paid})`,'neutral','💸');
   save(); Hooks.onChange(); return {ok:true};
 }
 function undo(){
@@ -128,7 +128,7 @@ function checkLiquidations(){
     if(posValue(p)>0) continue;
     const t=team(p.t), st=stock(p.s);
     S.pos=S.pos.filter(x=>x!==p);
-    const txt=`${t.name} perd ses ${p.paid} tickets sur ${st.emoji} ${st.name} (${p.dir>0?'hausse':'baisse'} ×${p.lev})`;
+    const txt=`${t.name} perd ses ${p.paid} tickets sur ${st.name} (${p.dir>0?'hausse':'baisse'} ×${p.lev})`;
     addLog('Liquidé : '+txt,'bad','💀');
     Hooks.onMinor({icon:'💀',text:'LIQUIDÉ — '+txt,tone:'bad'});
     pushEv({tone:'bad',icon:'💀',title:'Liquidé',text:txt,minor:true});
@@ -157,35 +157,35 @@ const EVENTS = [
      S.pending.push({kind:'verdict',id:st.id,at,label});
      return {tone:'neutral',ann:true,icon:'📣',title:'Annonce à venir',text:`${label} dans ${fmtCount(at-S.clock)}.\nÇa va bouger très fort : hausse ou baisse ?\nLes paris sur ${st.name} se gèlent 30 s avant.`,s:st.id}}},
   {w:4, run(){const r=refuge(); S.stocks.forEach(s=>{if(s===r) jump(s,rnd(.1,.25)); else jump(s,-rnd(.2,.4)*soft(s),.5)});
-     return {tone:'bad',icon:'💥',title:'KRACH',text:`Tout le marché s'effondre !\nSeul ${r.emoji} ${r.name} tient bon.`}}},
+     return {tone:'bad',icon:'💥',title:'KRACH',text:`Tout le marché s'effondre !\nSeul ${r.name} tient bon.`}}},
   {w:4, run(){const m=rnd(5,8); S.stocks.forEach(s=>addEffect(s,m,{drift:.02}));
      return {tone:'good',icon:'🐂',title:'Euphorie',text:`Tout le marché grimpe pendant ~${Math.round(m)} minutes. Les paris à la hausse sont rois.`}}},
   {w:4, run(){const m=rnd(5,8); S.stocks.forEach(s=>addEffect(s,m,{drift:-.02}));
      return {tone:'bad',icon:'🐻',title:'Marché baissier',text:`Tout glisse pendant ~${Math.round(m)} minutes. Le moment de parier à la baisse ?`}}},
   {w:5, run(){const st=pick(risky().length?risky():S.stocks); addEffect(st,8,{vol:3});
-     return {tone:'neutral',icon:'🌪️',title:'Tempête',text:`${st.emoji} ${st.name} devient incontrôlable pendant 8 minutes. Les ×5 vont souffrir.`,s:st.id}}},
+     return {tone:'neutral',icon:'🌪️',title:'Tempête',text:`${st.name} devient incontrôlable pendant 8 minutes. Les ×5 vont souffrir.`,s:st.id}}},
   {w:8, run(){const st=pick(S.stocks), dir=Math.random()<.5?1:-1;
      S.pending.push({kind:'rumor',id:st.id,at:S.clock+rnd(2,4)*60000,dir,truth:Math.random()<.65});
-     return {tone:'neutral',icon:'🤫',title:'Rumeur…',text:`On raconte que ${st.emoji} ${st.name} va ${dir>0?'EXPLOSER':'S\'EFFONDRER'} d'ici quelques minutes.\nInfo ou intox ?`,s:st.id}}},
+     return {tone:'neutral',icon:'🤫',title:'Rumeur…',text:`On raconte que ${st.name} va ${dir>0?'EXPLOSER':'S\'EFFONDRER'} d'ici quelques minutes.\nInfo ou intox ?`,s:st.id}}},
   {w:6, run(){const longs=S.pos.filter(p=>p.dir>0); const st=longs.length?stock(pick(longs).s):pick(S.stocks); const pct=rint(15,30)/100;
      const ps=S.pos.filter(p=>p.s===st.id&&p.dir>0); ps.forEach(p=>p.stake*=1+pct);
      const names=[...new Set(ps.map(p=>team(p.t).name))];
-     return {tone:'good',icon:'💰',title:'Dividende',text:`${st.emoji} ${st.name} récompense ses fidèles : +${Math.round(pct*100)} % sur les mises à la hausse.\n${names.length?'Gagnants : '+names.join(', '):'Personne n\'en profite…'}`,s:st.id}}},
+     return {tone:'good',icon:'💰',title:'Dividende',text:`${st.name} récompense ses fidèles : +${Math.round(pct*100)} % sur les mises à la hausse.\n${names.length?'Gagnants : '+names.join(', '):'Personne n\'en profite…'}`,s:st.id}}},
   {w:2, run(){const st=pick(risky().length?risky():S.stocks), p=jump(st,rnd(.5,1),.6);
      return {tone:'good',icon:'🤝',title:'OPA surprise',text:`Un géant américain rachète ${st.name}.`,s:st.id,delta:p}}},
   {w:2, cond:()=>risky().length>0, run(){const st=pick(risky()), p=jump(st,-5.5,.7);
      if(Math.random()<.6) S.pending.push({kind:'rescue',id:st.id,at:S.clock+rnd(3,6)*60000});
-     return {tone:'bad',icon:'☠️',title:'FAILLITE',text:`${st.emoji} ${st.name} est en cessation de paiement.\nUn repreneur va-t-il se manifester ?`,s:st.id,delta:p}}},
+     return {tone:'bad',icon:'☠️',title:'FAILLITE',text:`${st.name} est en cessation de paiement.\nUn repreneur va-t-il se manifester ?`,s:st.id,delta:p}}},
   {w:3, cond:()=>S.pos.length>0, run(){const p=pick(S.pos), t=team(p.t), st=stock(p.s);
-     if(Math.random()<.5){p.stake*=2; return {tone:'good',icon:'🎰',title:'Double ou rien : DOUBLE',text:`La mise de ${t.name} sur ${st.emoji} ${st.name} vient de doubler !`}}
+     if(Math.random()<.5){p.stake*=2; return {tone:'good',icon:'🎰',title:'Double ou rien : DOUBLE',text:`La mise de ${t.name} sur ${st.name} vient de doubler !`}}
      S.pos=S.pos.filter(x=>x!==p); addLog(`${t.name} perd ${p.paid} tickets (double ou rien)`,'bad','🎰');
-     return {tone:'bad',icon:'🎰',title:'Double ou rien : RIEN',text:`La mise de ${t.name} sur ${st.emoji} ${st.name} part en fumée.`}}},
+     return {tone:'bad',icon:'🎰',title:'Double ou rien : RIEN',text:`La mise de ${t.name} sur ${st.name} part en fumée.`}}},
   {w:3, cond:()=>ranking().some(r=>r.value>0), run(){const r=ranking().filter(r=>r.value>0)[0];
      S.pos.filter(p=>p.t===r.t.id).forEach(p=>p.stake*=.8);
      return {tone:'bad',icon:'🕵️',title:'Contrôle fiscal',text:`Le fisc s'intéresse à l'équipe en tête…\n${r.t.name} perd 20 % sur toutes ses mises.`}}},
   {w:3, cond:()=>S.teams.length>1, run(){const r=ranking(), t=r[r.length-1].t, st=refuge();
      S.pos.push({id:uid(),t:t.id,s:st.id,dir:1,lev:2,paid:0,stake:8,entry:st.price,at:S.clock,gift:true});
-     return {tone:'good',icon:'🎁',title:`${st.name} est généreux`,text:`Cadeau pour la dernière équipe :\n${t.name} reçoit une mise gratuite de 8 tickets sur ${st.emoji} ${st.name} (hausse ×2).`}}},
+     return {tone:'good',icon:'🎁',title:`${st.name} est généreux`,text:`Cadeau pour la dernière équipe :\n${t.name} reçoit une mise gratuite de 8 tickets sur ${st.name} (hausse ×2).`}}},
   {w:2, run(){S.stocks.forEach(s=>addEffect(s,4,{vol:.25}));
      return {tone:'neutral',icon:'☕',title:'Pause café',text:'Le marché se calme pendant 4 minutes. Le moment de placer ses pions.'}}},
   // événements liés aux actions de la bande
@@ -217,14 +217,14 @@ function resolvePending(p){
   }
   if(p.kind==='rumor'){
     if(p.truth){const v=jump(st,rnd(.25,.5)*p.dir);addEffect(st,4,{drift:.006*p.dir});
-      return {tone:v>0?'good':'bad',icon:'✅',title:'La rumeur était vraie',text:`${st.emoji} ${st.name}`,s:st.id,delta:v}}
+      return {tone:v>0?'good':'bad',icon:'✅',title:'La rumeur était vraie',text:`${st.name}`,s:st.id,delta:v}}
     const v=jump(st,-rnd(.08,.18)*p.dir);
-    return {tone:'neutral',icon:'❌',title:'Intox !',text:`La rumeur sur ${st.emoji} ${st.name} était fausse.`,s:st.id,delta:v};
+    return {tone:'neutral',icon:'❌',title:'Intox !',text:`La rumeur sur ${st.name} était fausse.`,s:st.id,delta:v};
   }
   if(p.kind==='rescue'){const v=jump(st,rnd(.8,1.5),.6);
-    return {tone:'good',icon:'🦸',title:'Sauvetage',text:`Un repreneur relance ${st.emoji} ${st.name} !`,s:st.id,delta:v}}
+    return {tone:'good',icon:'🦸',title:'Sauvetage',text:`Un repreneur relance ${st.name} !`,s:st.id,delta:v}}
   if(p.kind==='dump'){const v=jump(st,-rnd(.5,1),.6);
-    return {tone:'bad',icon:'🪂',title:'Pump & dump',text:`Les gros portefeuilles ont tout revendu : ${st.emoji} ${st.name} s'écroule.`,s:st.id,delta:v}}
+    return {tone:'bad',icon:'🪂',title:'Pump & dump',text:`Les gros portefeuilles ont tout revendu : ${st.name} s'écroule.`,s:st.id,delta:v}}
 }
 
 /* ---------- cycle de partie ---------- */
@@ -246,12 +246,12 @@ function endGame(){
 function downsample(a,n){if(a.length<=n)return a;const o=[];for(let i=0;i<n;i++)o.push(a[Math.round(i*(a.length-1)/(n-1))]);return o}
 function stockTags(st){
   const tags=[], ef=effects(st), m=Math.max(1,Math.ceil((ef.until-S.clock)/60000));
-  if(ef.d>.003) tags.push({t:'up',icon:'🐂',label:`Élan haussier · ${m} min`});
-  else if(ef.d<-.003) tags.push({t:'down',icon:'🐻',label:`Pression baissière · ${m} min`});
-  if(ef.v>1.5) tags.push({t:'warn',icon:'🌪️',label:`Instable · ${m} min`});
-  else if(ef.v<.6) tags.push({t:'calm',icon:'☕',label:'Calme'});
-  if(S.pending.some(p=>p.kind==='rumor'&&p.id===st.id)) tags.push({t:'warn',icon:'🤫',label:'Rumeur'});
-  if(S.pending.some(p=>p.kind==='verdict'&&p.id===st.id)) tags.push({t:'ann',icon:'📣',label:'Annonce imminente'});
+  if(ef.d>.003) tags.push({t:'up',icon:'▲',label:`Élan haussier · ${m} min`});
+  else if(ef.d<-.003) tags.push({t:'down',icon:'▼',label:`Pression baissière · ${m} min`});
+  if(ef.v>1.5) tags.push({t:'warn',icon:'≈',label:`Instable · ${m} min`});
+  else if(ef.v<.6) tags.push({t:'calm',icon:'–',label:'Calme'});
+  if(S.pending.some(p=>p.kind==='rumor'&&p.id===st.id)) tags.push({t:'warn',icon:'?',label:'Rumeur'});
+  if(S.pending.some(p=>p.kind==='verdict'&&p.id===st.id)) tags.push({t:'ann',icon:'◆',label:'Annonce'});
   return tags;
 }
 function snapshot(){

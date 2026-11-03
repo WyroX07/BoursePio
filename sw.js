@@ -1,7 +1,7 @@
 // Cache hors-ligne (appareil de la banque) : réseau d'abord pour avoir les mises à jour, cache si pas de réseau.
-const CACHE = 'boursepio-v3';
+const CACHE = 'boursepio-v4';
 const FILES = ['./', 'index.html', 'css/app.css', 'js/data.js', 'js/common.js', 'js/sync.js', 'js/engine.js', 'js/host.js', 'js/screens.js',
-  'vendor/qrcode.js', 'vendor/mqtt.min.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png'];
+  'vendor/qrcode.js', 'vendor/mqtt.min.js', 'fonts/plex-mono-400.woff2', 'fonts/plex-mono-500.woff2', 'fonts/plex-mono-600.woff2', 'fonts/barlow-cond-600.woff2', 'fonts/barlow-cond-700.woff2', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
